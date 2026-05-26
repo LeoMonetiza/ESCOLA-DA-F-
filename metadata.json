@@ -1,0 +1,6 @@
+{
+  "name": "Escola da Fé",
+  "description": "Um aplicativo bíblico completo com estudos, dicionário de nomes, histórias de personagens e lugares, teologia e um curso básico para iniciantes.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

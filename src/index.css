@@ -1,0 +1,64 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --color-primary: #3F51B5;
+  --color-secondary: #1A237E;
+  --color-accent: #FBBF24;
+  --color-bg-page: #F8F9FA;
+  --color-bg-dark: #0F172A;
+  --color-card-light: #FFFFFF;
+  --color-card-dark: #1E293B;
+  --color-border-light: #E2E8F0;
+  --color-border-dark: #334155;
+  --radius-xl: 24px;
+  --radius-2xl: 32px;
+}
+
+@layer base {
+  body {
+    @apply bg-bg-page text-slate-800 font-sans antialiased transition-colors duration-300;
+  }
+  
+  .dark body {
+    @apply bg-bg-dark text-slate-100;
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-card-light dark:bg-card-dark rounded-2xl shadow-sm border border-border-light dark:border-border-dark p-6 transition-all hover:shadow-md;
+  }
+  
+  .btn-primary {
+    @apply bg-primary text-white px-6 py-3 rounded-xl font-bold transition-all hover:bg-secondary active:scale-95;
+  }
+
+  .nav-item-active {
+    @apply bg-white/10 text-white;
+  }
+  
+  .nav-item-hover {
+    @apply hover:bg-white/5 text-slate-300 hover:text-white transition-colors;
+  }
+  
+  .text-muted {
+    @apply text-slate-500 dark:text-slate-400;
+  }
+  
+  .text-heading {
+    @apply text-slate-900 dark:text-white;
+  }
+}
+
+/* Hide scrollbar for Chrome, Safari and Opera */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+/* Hide scrollbar for IE, Edge and Firefox */
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
