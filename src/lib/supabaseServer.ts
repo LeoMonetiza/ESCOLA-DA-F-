@@ -5,8 +5,8 @@ let supabase: any = null;
 export function getSupabaseClient() {
   if (supabase) return supabase;
 
-  const rawUrl = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
+  const rawUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
 
   if (!rawUrl || !key) {
     return null;
@@ -36,7 +36,7 @@ export async function testSupabaseConnection(): Promise<{ success: boolean; mess
   if (!client) {
     return {
       success: false,
-      message: "Credenciais do Supabase ausentes no arquivo .env. Defina SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY."
+      message: "Credenciais do Supabase ausentes no arquivo .env. Defina VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY."
     };
   }
 

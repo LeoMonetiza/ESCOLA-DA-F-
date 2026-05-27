@@ -3992,20 +3992,38 @@ function AppContent({ isDark, setIsDark }: { isDark: boolean, setIsDark: (val: b
       if (resultData) {
         setDbStatus("online");
         setRetryDelay(3000); // Reseta retentativas em caso de sucesso
-        const { estudos, dicionario, historias, teologia, curso, comunicados, configuracoes } = resultData;
+        let { estudos, dicionario, historias, teologia, curso, comunicados, configuracoes } = resultData || {};
+
+        // Garante que todas as coleções sejam arrays válidos antes de qualquer operação
+        estudos = Array.isArray(estudos) ? estudos : [];
+        dicionario = Array.isArray(dicionario) ? dicionario : [];
+        historias = Array.isArray(historias) ? historias : [];
+        teologia = Array.isArray(teologia) ? teologia : [];
+        curso = Array.isArray(curso) ? curso : [];
+        comunicados = Array.isArray(comunicados) ? comunicados : [];
+        configuracoes = Array.isArray(configuracoes) ? configuracoes : [];
+
         const deletedIds = JSON.parse(localStorage.getItem("escola_da_fe_deleted_ids") || "[]");
 
-        console.log(`[Supabase Sync] Mapeando dados obtidos via ${syncMethod}. Estudos: ${estudos?.length || 0}, Dicionário: ${dicionario?.length || 0}`);
+        console.log(`[Supabase Sync] Mapeando dados obtidos via ${syncMethod}. Estudos: ${estudos.length}, Dicionário: ${dicionario.length}`);
 
         // 1. Map Estudos (themes)
-        const mappedEstudos = (estudos || []).map((row: any) => ({
-          id: row.id,
-          title: row.titulo,
-          description: row.descricao,
-          category: row.categoria || "Estudo Bíblico",
-          content: row.conteudo,
-          bibleVerse: row.referencia_biblica || ""
-        }));
+        const mappedEstudos = (estudos || [])
+          .filter((row: any) => {
+            if (deletedIds.includes(row.id)) {
+              fetch(`/api/db/estudos/${row.id}`, { method: "DELETE" }).catch(() => {});
+              return false;
+            }
+            return true;
+          })
+          .map((row: any) => ({
+            id: row.id,
+            title: row.titulo,
+            description: row.descricao,
+            category: row.categoria || "Estudo Bíblico",
+            content: row.conteudo,
+            bibleVerse: row.referencia_biblica || ""
+          }));
         setThemes((prev: any[]) => {
           const merged = [...mappedEstudos];
           (prev || []).forEach(localItem => {
@@ -4022,13 +4040,21 @@ function AppContent({ isDark, setIsDark }: { isDark: boolean, setIsDark: (val: b
         });
 
         // 2. Map Dicionário (names)
-        const mappedDicionario = (dicionario || []).map((row: any) => ({
-          name: row.termo,
-          meaning: row.significado,
-          description: row.descricao || "",
-          content: row.conteudo || "",
-          bibleVerse: row.referencia_biblica || ""
-        }));
+        const mappedDicionario = (dicionario || [])
+          .filter((row: any) => {
+            if (deletedIds.includes(row.termo)) {
+              fetch(`/api/db/dicionario/${row.termo}`, { method: "DELETE" }).catch(() => {});
+              return false;
+            }
+            return true;
+          })
+          .map((row: any) => ({
+            name: row.termo,
+            meaning: row.significado,
+            description: row.descricao || "",
+            content: row.conteudo || "",
+            bibleVerse: row.referencia_biblica || ""
+          }));
         setNames((prev: any[]) => {
           const merged = [...mappedDicionario];
           (prev || []).forEach(localItem => {
@@ -4045,14 +4071,22 @@ function AppContent({ isDark, setIsDark }: { isDark: boolean, setIsDark: (val: b
         });
 
         // 3. Map Histórias (stories)
-        const mappedHistorias = (historias || []).map((row: any) => ({
-          id: row.id,
-          title: row.title,
-          type: row.type,
-          summary: row.summary,
-          content: row.content,
-          bibleVerse: row.referencia_biblica || ""
-        }));
+        const mappedHistorias = (historias || [])
+          .filter((row: any) => {
+            if (deletedIds.includes(row.id)) {
+              fetch(`/api/db/historias/${row.id}`, { method: "DELETE" }).catch(() => {});
+              return false;
+            }
+            return true;
+          })
+          .map((row: any) => ({
+            id: row.id,
+            title: row.title,
+            type: row.type,
+            summary: row.summary,
+            content: row.content,
+            bibleVerse: row.referencia_biblica || ""
+          }));
         setStories((prev: any[]) => {
           const merged = [...mappedHistorias];
           (prev || []).forEach(localItem => {
@@ -4069,13 +4103,21 @@ function AppContent({ isDark, setIsDark }: { isDark: boolean, setIsDark: (val: b
         });
 
         // 4. Map Teologia (theologyTopics)
-        const mappedTeologia = (teologia || []).map((row: any) => ({
-          id: row.id,
-          title: row.titulo,
-          description: row.resumo,
-          content: row.conteudo_completo,
-          bibleVerse: row.referencias_biblicas || ""
-        }));
+        const mappedTeologia = (teologia || [])
+          .filter((row: any) => {
+            if (deletedIds.includes(row.id)) {
+              fetch(`/api/db/teologia/${row.id}`, { method: "DELETE" }).catch(() => {});
+              return false;
+            }
+            return true;
+          })
+          .map((row: any) => ({
+            id: row.id,
+            title: row.titulo,
+            description: row.resumo,
+            content: row.conteudo_completo,
+            bibleVerse: row.referencias_biblicas || ""
+          }));
         setTheologyTopics((prev: any[]) => {
           const merged = [...mappedTeologia];
           (prev || []).forEach(localItem => {
@@ -4092,13 +4134,21 @@ function AppContent({ isDark, setIsDark }: { isDark: boolean, setIsDark: (val: b
         });
 
         // 5. Map Curso (courseLessons)
-        const mappedCurso = (curso || []).map((row: any) => ({
-          lesson: row.lesson,
-          title: row.titulo_licao,
-          description: row.description,
-          category: row.category || "Curso Teológico",
-          content: row.conteudo
-        }));
+        const mappedCurso = (curso || [])
+          .filter((row: any) => {
+            if (deletedIds.includes(row.lesson)) {
+              fetch(`/api/db/curso/${row.lesson}`, { method: "DELETE" }).catch(() => {});
+              return false;
+            }
+            return true;
+          })
+          .map((row: any) => ({
+            lesson: row.lesson,
+            title: row.titulo_licao,
+            description: row.description,
+            category: row.category || "Curso Teológico",
+            content: row.conteudo
+          }));
         setCourseLessons((prev: any[]) => {
           const merged = [...mappedCurso];
           (prev || []).forEach(localItem => {
