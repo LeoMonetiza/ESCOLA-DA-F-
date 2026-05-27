@@ -1,10 +1,10 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = (import.meta as any).env.VITE_SUPABASE_URL;
-const supabaseAnonKey = (import.meta as any).env.VITE_SUPABASE_ANON_KEY;
+const supabaseUrl = (import.meta as any).env.VITE_SUPABASE_URL?.replace(/^["']|["']$/g, "");
+const supabaseAnonKey = (import.meta as any).env.VITE_SUPABASE_ANON_KEY?.replace(/^["']|["']$/g, "");
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Variáveis do Supabase não configuradas.');
+  throw new Error("Supabase não está configurado corretamente");
 }
 
 const cleanUrl = supabaseUrl.trim().replace(/\/rest\/v1\/?$/, "").replace(/\/$/, "");

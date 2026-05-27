@@ -5,8 +5,8 @@ let supabase: any = null;
 export function getSupabaseClient() {
   if (supabase) return supabase;
 
-  const rawUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
+  const rawUrl = process.env.VITE_SUPABASE_URL?.replace(/^["']|["']$/g, "");
+  const key = process.env.VITE_SUPABASE_ANON_KEY?.replace(/^["']|["']$/g, "");
 
   if (!rawUrl || !key) {
     return null;
