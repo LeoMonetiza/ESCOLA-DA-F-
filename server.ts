@@ -19,7 +19,7 @@ interface FallbackData {
   historias: any[];
   teologia: any[];
   curso: any[];
-  comunicados: any[];
+  postagens: any[];
   configuracoes: any[];
 }
 
@@ -55,7 +55,7 @@ function getFallbackData(): FallbackData {
     historias: [],
     teologia: [],
     curso: [],
-    comunicados: [],
+    postagens: [],
     configuracoes: []
   };
 
@@ -169,7 +169,7 @@ async function startServer() {
         historias,
         teologia,
         curso,
-        comunicados,
+        postagens,
         configuracoes,
         posts,
         comments,
@@ -181,7 +181,7 @@ async function startServer() {
         safeQuery("historias_biografias", "historias"),
         safeQuery("teologia_doutrinas", "teologia"),
         safeQuery("licoes_curso", "curso"),
-        safeQuery("comunicados", "comunicados"),
+        safeQuery("postagens", "postagens"),
         safeQuery("configuracoes_sociais", "configuracoes"),
         safeQuery("posts", "posts"),
         safeQuery("comments", "comments"),
@@ -197,7 +197,7 @@ async function startServer() {
           historias,
           teologia,
           curso,
-          comunicados,
+          postagens,
           configuracoes,
           posts,
           comments,
@@ -228,7 +228,7 @@ async function startServer() {
     else if (table === "historias") { dbTable = "historias_biografias"; fallbackKey = "historias"; }
     else if (table === "teologia") { dbTable = "teologia_doutrinas"; fallbackKey = "teologia"; }
     else if (table === "curso") { dbTable = "licoes_curso"; fallbackKey = "curso"; }
-    else if (table === "comunicados") { dbTable = "comunicados"; fallbackKey = "comunicados"; }
+    else if (table === "comunicados" || table === "postagens") { dbTable = "postagens"; fallbackKey = "postagens"; }
     else if (table === "configuracoes") { dbTable = "configuracoes_sociais"; fallbackKey = "configuracoes"; }
     else if (table === "homens" || table === "homens_de_deus") { dbTable = "homens_de_deus"; fallbackKey = "homens" as any; }
     else if (table === "posts") { dbTable = "posts"; fallbackKey = "posts"; }
@@ -293,7 +293,7 @@ async function startServer() {
     else if (table === "historias") { dbTable = "historias_biografias"; fallbackKey = "historias"; }
     else if (table === "teologia") { dbTable = "teologia_doutrinas"; fallbackKey = "teologia"; }
     else if (table === "curso") { dbTable = "licoes_curso"; fallbackKey = "curso"; }
-    else if (table === "comunicados") { dbTable = "comunicados"; fallbackKey = "comunicados"; }
+    else if (table === "comunicados" || table === "postagens") { dbTable = "postagens"; fallbackKey = "postagens"; }
     else if (table === "configuracoes") { dbTable = "configuracoes_sociais"; fallbackKey = "configuracoes"; }
     else if (table === "homens" || table === "homens_de_deus") { dbTable = "homens_de_deus"; fallbackKey = "homens" as any; }
     else if (table === "posts") { dbTable = "posts"; fallbackKey = "posts"; }

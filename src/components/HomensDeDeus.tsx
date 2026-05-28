@@ -202,6 +202,9 @@ export default function HomensDeDeusView({
   });
   const [commentNames, setCommentNames] = useState<Record<string, string>>({});
   const [commentTexts, setCommentTexts] = useState<Record<string, string>>({});
+  // Comments editing states
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
+  const [editingCommentText, setEditingCommentText] = useState<string>("");
   const lastCommentTime = React.useRef<number>(0);
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
@@ -227,6 +230,18 @@ export default function HomensDeDeusView({
 
   const getMyReaction = (manId: string) => {
     return reactions.find((r) => r.post_id === manId && r.device_id === deviceId)?.type;
+  };
+
+  const isCommentOwner = (com: any) => {
+    if (isAdmin) return true;
+    if (!com) return false;
+    if (com.device_id === deviceId) return true;
+    try {
+      const myIds = JSON.parse(localStorage.getItem("escola_mural_my_comment_ids") || "[]");
+      return myIds.includes(com.id);
+    } catch {
+      return false;
+    }
   };
 
   const handleToggleReaction = async (manId: string, reactionType: string) => {
@@ -327,6 +342,13 @@ export default function HomensDeDeusView({
     const updatedComments = [...comments, newCommentObj];
     setComments(updatedComments);
     localStorage.setItem("escola_mural_comments", JSON.stringify(updatedComments));
+    try {
+      const myIds = JSON.parse(localStorage.getItem("escola_mural_my_comment_ids") || "[]");
+      myIds.push(newCommentId);
+      localStorage.setItem("escola_mural_my_comment_ids", JSON.stringify(myIds));
+    } catch (err) {
+      console.warn(err);
+    }
     setCommentTexts(prev => ({ ...prev, [manId]: "" }));
     showToast("Comentário publicado!");
 
@@ -340,6 +362,84 @@ export default function HomensDeDeusView({
     } catch {
       console.warn("Comentário salvo em cache local devido à fraca rede.");
     }
+  };
+
+  const askConfirm = (title: string, message: string, onConfirm: () => void) => {
+    if (triggerConfirm) {
+      triggerConfirm(title, message, onConfirm);
+    } else {
+      if (window.confirm(message)) {
+        onConfirm();
+      }
+    }
+  };
+
+  const handleDeleteComment = (commentId: string) => {
+    askConfirm(
+      "Confirmar Exclusão de Comentário",
+      "Deseja realmente apagar permanentemente este comentário?",
+      async () => {
+        const remaining = comments.filter(c => c.id !== commentId);
+        setComments(remaining);
+        localStorage.setItem("escola_mural_comments", JSON.stringify(remaining));
+
+        try {
+          await fetch(`/api/db/comments/${commentId}`, { method: "DELETE" });
+          showToast("Comentário excluído!");
+        } catch (e) {
+          console.warn(e);
+        }
+      }
+    );
+  };
+
+  const handleUpdateComment = async (commentId: string, updatedText: string) => {
+    if (!updatedText.trim()) return;
+
+    const updatedComments = comments.map(c => 
+      c.id === commentId ? { ...c, comment: updatedText.trim() } : c
+    );
+    setComments(updatedComments);
+    localStorage.setItem("escola_mural_comments", JSON.stringify(updatedComments));
+
+    setEditingCommentId(null);
+    setEditingCommentText("");
+    showToast("Comentário atualizado!");
+
+    const targetComment = updatedComments.find(c => c.id === commentId);
+    if (targetComment) {
+      try {
+        await fetch("/api/db/comments/add", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(targetComment)
+        });
+      } catch (e) {
+        console.warn(e);
+      }
+    }
+  };
+
+  const handleClearReactions = (manId: string) => {
+    askConfirm(
+      "Confirmar Remoção de Reações",
+      "Deseja realmente remover todas as reações desta biografia?",
+      async () => {
+        const reactionsToRemove = reactions.filter(r => r.post_id === manId);
+        const remaining = reactions.filter(r => r.post_id !== manId);
+        setReactions(remaining);
+        localStorage.setItem("escola_mural_reactions", JSON.stringify(remaining));
+
+        try {
+          for (const r of reactionsToRemove) {
+            await fetch(`/api/db/reactions/${r.id}`, { method: "DELETE" });
+          }
+          showToast("Reações limpas!");
+        } catch (e) {
+          console.warn(e);
+        }
+      }
+    );
   };
 
   // Inicializa o cliente do Supabase no frontend e estabelece a sincronização em tempo real
@@ -496,6 +596,8 @@ export default function HomensDeDeusView({
                   if (prev.some(c => c.id === payload.new.id)) return prev;
                   return [...prev, payload.new];
                 });
+              } else if (payload.eventType === "UPDATE") {
+                setComments(prev => prev.map(c => c.id === payload.new.id ? payload.new : c));
               } else if (payload.eventType === "DELETE") {
                 setComments(prev => prev.filter(c => c.id !== payload.old.id));
               }
@@ -1050,19 +1152,19 @@ export default function HomensDeDeusView({
           <p className="text-xs text-muted font-medium mt-1">Busque por outros nomes ou adicione novos registros liberando o painel administrativo.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div className="grid grid-cols-2 md:grid-cols-2 gap-3 sm:gap-8">
           {filtered.map((item, index) => (
             <motion.div
               layout
               key={item.id}
               onClick={() => setSelectedMan(item)}
-              className="group cursor-pointer bg-white dark:bg-card-dark border-2 border-transparent hover:border-[#cfaf72]/40 rounded-[2.5rem] p-5 sm:p-8 shadow-xl hover:-translate-y-2 transition-all flex flex-col md:flex-row items-stretch gap-5 sm:gap-8 overflow-hidden"
+              className="group cursor-pointer bg-white dark:bg-card-dark border-2 border-transparent hover:border-[#cfaf72]/40 rounded-3xl p-3 sm:p-5 shadow-xl hover:-translate-y-2 transition-all flex flex-col items-center text-center md:flex-row md:items-stretch md:text-left gap-3 sm:gap-6 overflow-hidden"
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.15, ease: "easeOut" }}
             >
               {/* Photo or dynamic initials */}
-              <div className="w-full md:w-44 h-48 rounded-3xl overflow-hidden relative bg-slate-100 dark:bg-slate-800 shrink-0 shadow-inner">
+              <div className="w-12 h-12 sm:w-16 sm:h-16 md:w-32 md:h-40 rounded-full md:rounded-2xl overflow-hidden relative bg-slate-100 dark:bg-slate-800 shrink-0 shadow-inner">
                 {item.photoUrl ? (
                   <img 
                     src={item.photoUrl} 
@@ -1078,73 +1180,73 @@ export default function HomensDeDeusView({
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-950/40 via-transparent to-transparent" />
                 
                 {/* Visual Accent representation of initial */}
-                <div className="absolute inset-0 flex items-center justify-center font-black text-5xl text-slate-200/20 dark:text-slate-700/30">
+                <div className="absolute inset-0 flex items-center justify-center font-black text-lg sm:text-2xl md:text-4xl text-slate-200/20 dark:text-slate-700/30">
                   {item.name[0]}
                 </div>
 
-                <div className="absolute bottom-4 left-4 bg-secondary/80 text-white backdrop-blur-sm px-3 py-1 rounded-xl text-[10px] font-black uppercase tracking-wider">
+                <div className="absolute bottom-0.5 md:bottom-2.5 left-1/2 -translate-x-1/2 md:translate-x-0 md:left-2.5 bg-secondary/80 text-white backdrop-blur-sm px-1 py-0.2 md:px-2 md:py-0.5 rounded-md text-[5px] md:text-[8px] font-black uppercase tracking-wider whitespace-nowrap">
                   {item.era}
                 </div>
               </div>
 
               {/* Text Fields */}
-              <div className="flex-grow flex flex-col justify-between py-1">
+              <div className="flex-grow flex flex-col justify-between py-0.5 w-full">
                 <div>
-                  <div className="flex items-center justify-between gap-4">
-                    <span className="text-[10px] text-accent font-black uppercase tracking-widest bg-accent/10 px-3 py-1 rounded-full leading-none">
+                  <div className="flex items-center justify-center md:justify-between gap-1 sm:gap-4">
+                    <span className="text-[7px] sm:text-[9px] text-accent font-black uppercase tracking-widest bg-accent/10 px-1.5 py-0.5 sm:px-2 sm:py-0.5 rounded-full leading-none">
                       {item.birthAndDeath}
                     </span>
                     
                     {/* Admin Action triggers */}
                     {isAdmin && (
-                      <div className="flex items-center gap-1">
+                      <div className="hidden md:flex items-center gap-1">
                         <button
                           onClick={(e) => handleStartEdit(item, e)}
-                          className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-accent rounded-lg transition-colors"
+                          className="p-1 sm:p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-accent rounded-lg transition-colors"
                           title="Editar"
                         >
-                          <Edit3 size={14} />
+                          <Edit3 size={11} />
                         </button>
                         <button
                           onClick={(e) => handleDeleteItem(item.id, e)}
-                          className="p-1.5 hover:bg-red-500/10 text-red-400 hover:text-red-500 rounded-lg transition-colors"
+                          className="p-1 sm:p-1.5 hover:bg-red-500/10 text-red-400 hover:text-red-500 rounded-lg transition-colors"
                           title="Excluir"
                         >
-                          <Trash2 size={14} />
+                          <Trash2 size={11} />
                         </button>
                       </div>
                     )}
                   </div>
 
-                  <h4 className="text-2xl font-black text-heading mt-3 mb-1 tracking-tight leading-tight group-hover:text-primary transition-colors">
+                  <h4 className="text-[11px] sm:text-xs md:text-lg font-black text-heading mt-1 sm:mt-1.5 mb-0.5 tracking-tight leading-tight group-hover:text-primary transition-colors line-clamp-1">
                     {item.name}
                   </h4>
-                  <p className="text-xs text-[#cfaf72] font-extrabold italic uppercase tracking-wider mb-3">
+                  <p className="text-[8px] sm:text-[9px] text-[#cfaf72] font-extrabold italic uppercase tracking-wider mb-1 line-clamp-1">
                     {item.mainLegacy}
                   </p>
                   
-                  <p className="text-sm text-muted leading-relaxed font-semibold line-clamp-3">
+                  <p className="text-[9px] sm:text-[10px] md:text-xs text-muted leading-relaxed font-semibold line-clamp-2 md:line-clamp-3">
                     {item.story}
                   </p>
                 </div>
 
-                <div className="mt-6 pt-4 border-t border-slate-100 dark:border-border-dark flex items-center justify-between text-xs text-slate-400 font-extrabold uppercase tracking-wider">
-                  <span className="flex items-center gap-3.5 leading-none">
-                    <span className="flex items-center gap-1.5">
-                      <Clock size={12} /> Ler Biografia
+                <div className="mt-1.5 sm:mt-3 pt-1 sm:pt-2 border-t border-slate-100 dark:border-border-dark flex items-center justify-between text-[6px] sm:text-[9px] text-slate-400 font-extrabold uppercase tracking-wider">
+                  <span className="flex items-center gap-0.5 sm:gap-2 leading-none">
+                    <span className="flex items-center gap-0.5">
+                      <Clock size={8} className="sm:w-2.5 sm:h-2.5" /> <span className="hidden xs:inline">Biografia</span><span className="xs:hidden">Ver</span>
                     </span>
                     {getCommentsCount(item.id) > 0 && (
-                      <span className="flex items-center gap-1 text-[#cfaf72]">
-                        <MessageCircle size={12} /> {getCommentsCount(item.id)}
+                      <span className="flex items-center gap-0.5 text-[#cfaf72]">
+                        <MessageCircle size={8} className="sm:w-2.5 sm:h-2.5" /> {getCommentsCount(item.id)}
                       </span>
                     )}
                     {reactions.filter(r => r.post_id === item.id).length > 0 && (
-                      <span className="flex items-center gap-1 text-[#cfaf72]">
+                      <span className="flex items-center gap-0.5 text-[#cfaf72]">
                         👍 {reactions.filter(r => r.post_id === item.id).length}
                       </span>
                     )}
                   </span>
-                  <ExternalLink size={14} className="text-[#cfaf72] group-hover:translate-x-1.5 transition-transform" />
+                  <ExternalLink size={8} className="text-[#cfaf72] group-hover:translate-x-0.5 transition-transform" />
                 </div>
               </div>
             </motion.div>
@@ -1338,6 +1440,15 @@ export default function HomensDeDeusView({
                           </button>
                         );
                       })}
+                      {isAdmin && (
+                        <button
+                          onClick={() => handleClearReactions(selectedMan.id)}
+                          className="p-1 px-2.5 ml-1 bg-red-500/10 hover:bg-red-500/20 text-red-500 font-extrabold text-[9px] uppercase tracking-wider rounded-lg transition active:scale-95 cursor-pointer animate-fade-in"
+                          title="Limpar todas as reações alheias"
+                        >
+                          Limpar Reações
+                        </button>
+                      )}
                     </div>
                   </div>
 
@@ -1359,16 +1470,69 @@ export default function HomensDeDeusView({
                               <span className="text-xs font-black text-slate-800 dark:text-white leading-none">
                                 {com.name || "Anônimo"}
                               </span>
-                              {com.device_id === deviceId && (
+                              {(com.device_id === deviceId || (isCommentOwner(com) && !isAdmin)) && (
                                 <span className="text-[9px] bg-amber-500/10 text-accent rounded-lg px-2 py-0.5 uppercase tracking-wide font-black">Você</span>
                               )}
                               <span className="text-[10px] text-muted font-mono ml-auto">
                                 {new Date(com.created_at).toLocaleDateString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
                               </span>
                             </div>
-                            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 font-semibold leading-relaxed">
-                              {com.comment}
-                            </p>
+                            {editingCommentId === com.id ? (
+                              <div className="flex gap-2 mt-1.5 w-full items-center">
+                                <input
+                                  type="text"
+                                  value={editingCommentText}
+                                  onChange={(e) => setEditingCommentText(e.target.value)}
+                                  className="flex-grow bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-white/10 text-slate-800 dark:text-white text-xs py-1 px-2 rounded-lg focus:outline-none focus:border-accent font-semibold"
+                                  autoFocus
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => handleUpdateComment(com.id, editingCommentText)}
+                                  className="p-1 px-2.5 bg-accent hover:bg-accent-light text-secondary rounded-lg text-[10px] font-extrabold uppercase shrink-0 transition cursor-pointer"
+                                >
+                                  Salvar
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setEditingCommentId(null);
+                                    setEditingCommentText("");
+                                  }}
+                                  className="p-1 px-2.5 hover:bg-slate-150 dark:hover:bg-white/5 text-slate-500 rounded-lg text-[10px] font-extrabold uppercase shrink-0 transition cursor-pointer"
+                                >
+                                  Cancelar
+                                </button>
+                              </div>
+                            ) : (
+                              <>
+                                <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 font-semibold leading-relaxed">
+                                  {com.comment}
+                                </p>
+                                {isCommentOwner(com) && (
+                                  <div className="flex items-center gap-2 mt-1.5">
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setEditingCommentId(com.id);
+                                        setEditingCommentText(com.comment);
+                                      }}
+                                      className="text-[9px] text-slate-400 hover:text-accent font-black uppercase tracking-wider flex items-center gap-1 transition active:scale-95 cursor-pointer"
+                                    >
+                                      <Edit3 size={8} /> Editar
+                                    </button>
+                                    <span className="text-slate-200 dark:text-white/10 text-xs leading-none">•</span>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDeleteComment(com.id)}
+                                      className="text-[9px] text-slate-400 hover:text-red-400 font-black uppercase tracking-wider flex items-center gap-1 transition active:scale-95 cursor-pointer"
+                                    >
+                                      <Trash2 size={8} /> Excluir
+                                    </button>
+                                  </div>
+                                )}
+                              </>
+                            )}
                           </div>
                         </div>
                       ))

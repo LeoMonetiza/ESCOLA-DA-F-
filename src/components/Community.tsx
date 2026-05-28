@@ -123,6 +123,10 @@ export default function Community({
   // Comments input visibility tracking
   const [activeCommentPostId, setActiveCommentPostId] = useState<string | null>(null);
 
+  // Comments editing states
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
+  const [editingCommentText, setEditingCommentText] = useState<string>("");
+
   // Form states for Admin Creating/Editing
   const [isPostFormOpen, setIsPostFormOpen] = useState(false);
   const [editingPostId, setEditingPostId] = useState<string | null>(null);
@@ -220,9 +224,10 @@ export default function Community({
         }
 
         console.log("[Community Realtime] Conectando ao canal de atualizações em tempo real...");
-        // Single channel to capture changes of comments, reactions, posts, ads in real time
+        // Single channel with unique instance id to capture changes of comments, reactions, posts, ads in real time
+        const uniqueChannelId = `realtime-mural-feed-${Math.random().toString(36).substring(2, 9)}`;
         subscription = supabase
-          .channel("realtime-mural-feed")
+          .channel(uniqueChannelId)
           .on("postgres_changes", { event: "*", schema: "public", table: "posts" }, () => {
             console.log("[Community Realtime] Mudança detectada na tabela 'posts', recarregando mural...");
             loadCommunityData();
@@ -268,7 +273,13 @@ export default function Community({
       isComponentMounted = false;
       if (reconnectTimeoutId) clearTimeout(reconnectTimeoutId);
       if (subscription) {
-        subscription.unsubscribe();
+        subscription.unsubscribe().then(() => {
+          getClientClient().then((supabase) => {
+            if (supabase) {
+              supabase.removeChannel(subscription).catch(() => {});
+            }
+          });
+        }).catch(() => {});
       }
     };
   }, []);
@@ -379,6 +390,13 @@ export default function Community({
     const updatedComments = [...comments, newCommentObj];
     setComments(updatedComments);
     updateCache("escola_mural_comments", updatedComments);
+    try {
+      const myIds = JSON.parse(localStorage.getItem("escola_mural_my_comment_ids") || "[]");
+      myIds.push(newCommentId);
+      localStorage.setItem("escola_mural_my_comment_ids", JSON.stringify(myIds));
+    } catch (err) {
+      console.warn(err);
+    }
 
     // Clear input
     setCommentTexts(prev => ({ ...prev, [postId]: "" }));
@@ -395,6 +413,74 @@ export default function Community({
     } catch {
       console.warn("Comentário salvo em cache local devido à fraca rede.");
     }
+  };
+
+  const handleDeleteComment = (commentId: string) => {
+    triggerConfirm(
+      "Confirmar Exclusão de Comentário",
+      "Deseja realmente apagar permanentemente este comentário?",
+      async () => {
+        const remaining = comments.filter(c => c.id !== commentId);
+        setComments(remaining);
+        updateCache("escola_mural_comments", remaining);
+
+        try {
+          await fetch(`/api/db/comments/${commentId}`, { method: "DELETE" });
+          showToast("Comentário excluído!");
+        } catch (e) {
+          console.warn(e);
+        }
+      }
+    );
+  };
+
+  const handleUpdateComment = async (commentId: string, updatedText: string) => {
+    if (!updatedText.trim()) return;
+
+    const updatedComments = comments.map(c => 
+      c.id === commentId ? { ...c, comment: updatedText.trim() } : c
+    );
+    setComments(updatedComments);
+    updateCache("escola_mural_comments", updatedComments);
+
+    setEditingCommentId(null);
+    setEditingCommentText("");
+    showToast("Comentário atualizado!");
+
+    const targetComment = updatedComments.find(c => c.id === commentId);
+    if (targetComment) {
+      try {
+        await fetch("/api/db/comments/add", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(targetComment)
+        });
+      } catch (e) {
+        console.warn(e);
+      }
+    }
+  };
+
+  const handleClearReactions = (postId: string) => {
+    triggerConfirm(
+      "Confirmar Remoção de Reações",
+      "Deseja realmente remover todas as reações desta publicação?",
+      async () => {
+        const reactionsToRemove = reactions.filter(r => r.post_id === postId);
+        const remaining = reactions.filter(r => r.post_id !== postId);
+        setReactions(remaining);
+        updateCache("escola_mural_reactions", remaining);
+
+        try {
+          for (const r of reactionsToRemove) {
+            await fetch(`/api/db/reactions/${r.id}`, { method: "DELETE" });
+          }
+          showToast("Reações limpas!");
+        } catch (e) {
+          console.warn(e);
+        }
+      }
+    );
   };
 
   // 5. Admin Post Manager handlers
@@ -559,6 +645,18 @@ export default function Community({
 
   const getMyReaction = (postId: string) => {
     return reactions.find((r) => r.post_id === postId && r.device_id === deviceId)?.type;
+  };
+
+  const isCommentOwner = (com: any) => {
+    if (isAdmin) return true;
+    if (!com) return false;
+    if (com.device_id === deviceId) return true;
+    try {
+      const myIds = JSON.parse(localStorage.getItem("escola_mural_my_comment_ids") || "[]");
+      return myIds.includes(com.id);
+    } catch {
+      return false;
+    }
   };
 
   const getCommentsCount = (postId: string) => {
@@ -1033,6 +1131,17 @@ export default function Community({
 
                     {/* Comments Toggle */}
                     <div className="flex items-center gap-2">
+                      {isAdmin && (
+                        <div className="flex items-center gap-1 border-r border-slate-200 dark:border-white/10 pr-2 mr-1">
+                          <button
+                            onClick={() => handleClearReactions(ad.id)}
+                            className="p-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 rounded-xl transition cursor-pointer"
+                            title="Limpar todas as reações alheias"
+                          >
+                            <Smile size={12} />
+                          </button>
+                        </div>
+                      )}
                       <button
                         onClick={() => setActiveCommentPostId(activeCommentPostId === ad.id ? null : ad.id)}
                         className={cn(
@@ -1064,21 +1173,74 @@ export default function Community({
                               <div className="w-8 h-8 rounded-xl bg-slate-100 dark:bg-white/5 flex items-center justify-center font-black shrink-0 text-[#cfaf72] text-xs uppercase text-left">
                                 {(com.name || "Anônimo").charAt(0)}
                               </div>
-                              <div className="space-y-1 text-left">
+                              <div className="space-y-1 text-left flex-grow">
                                 <div className="flex items-center gap-2 flex-wrap">
                                   <span className="text-xs font-black text-slate-800 dark:text-white leading-none">
                                     {com.name || "Anônimo"}
                                   </span>
-                                  {com.device_id === deviceId && (
+                                  {(com.device_id === deviceId || (isCommentOwner(com) && !isAdmin)) && (
                                     <span className="text-[9px] bg-slate-100 dark:bg-white/5 text-slate-400 dark:text-slate-300 rounded-lg px-2 py-0.5 uppercase tracking-wide font-black">Você</span>
                                   )}
                                   <span className="text-[10px] text-muted font-mono ml-auto">
                                     {new Date(com.created_at).toLocaleDateString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
                                   </span>
                                 </div>
-                                <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 font-semibold leading-relaxed">
-                                  {com.comment}
-                                </p>
+                                {editingCommentId === com.id ? (
+                                  <div className="flex gap-2 mt-1.5 w-full items-center">
+                                    <input
+                                      type="text"
+                                      value={editingCommentText}
+                                      onChange={(e) => setEditingCommentText(e.target.value)}
+                                      className="flex-grow bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-white/10 text-slate-800 dark:text-white text-xs py-1 px-2 rounded-lg focus:outline-none focus:border-accent font-semibold"
+                                      autoFocus
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={() => handleUpdateComment(com.id, editingCommentText)}
+                                      className="p-1 px-2.5 bg-accent hover:bg-accent-light text-secondary rounded-lg text-[10px] font-extrabold uppercase shrink-0 transition cursor-pointer"
+                                    >
+                                      Salvar
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setEditingCommentId(null);
+                                        setEditingCommentText("");
+                                      }}
+                                      className="p-1 px-2.5 hover:bg-slate-150 dark:hover:bg-white/5 text-slate-500 rounded-lg text-[10px] font-extrabold uppercase shrink-0 transition cursor-pointer"
+                                    >
+                                      Cancelar
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <>
+                                    <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 font-semibold leading-relaxed">
+                                      {com.comment}
+                                    </p>
+                                    {isCommentOwner(com) && (
+                                      <div className="flex items-center gap-2 mt-1.5">
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setEditingCommentId(com.id);
+                                            setEditingCommentText(com.comment);
+                                          }}
+                                          className="text-[9px] text-slate-400 hover:text-accent font-black uppercase tracking-wider flex items-center gap-1 transition active:scale-95 cursor-pointer"
+                                        >
+                                          <Pencil size={8} /> Editar
+                                        </button>
+                                        <span className="text-slate-200 dark:text-white/10 text-xs leading-none">•</span>
+                                        <button
+                                          type="button"
+                                          onClick={() => handleDeleteComment(com.id)}
+                                          className="text-[9px] text-slate-400 hover:text-red-400 font-black uppercase tracking-wider flex items-center gap-1 transition active:scale-95 cursor-pointer"
+                                        >
+                                          <Trash2 size={8} /> Excluir
+                                        </button>
+                                      </div>
+                                    )}
+                                  </>
+                                )}
                               </div>
                             </div>
                           ))
@@ -1284,14 +1446,21 @@ export default function Community({
                       <div className="flex items-center gap-1 border-r border-slate-200 dark:border-white/10 pr-2 mr-1">
                         <button
                           onClick={() => handleEditPost(post)}
-                          className="p-1.5 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 text-[#cfaf72] rounded-xl transition"
+                          className="p-1.5 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 text-[#cfaf72] rounded-xl transition cursor-pointer"
                           title="Editar publicação"
                         >
                           <Pencil size={12} />
                         </button>
                         <button
+                          onClick={() => handleClearReactions(post.id)}
+                          className="p-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 rounded-xl transition cursor-pointer"
+                          title="Limpar todas as reações alheias"
+                        >
+                          <Smile size={12} />
+                        </button>
+                        <button
                           onClick={() => handleDeletePost(post.id)}
-                          className="p-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl transition"
+                          className="p-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl transition cursor-pointer"
                           title="Excluir publicação"
                         >
                           <Trash2 size={12} />
@@ -1331,21 +1500,74 @@ export default function Community({
                             <div className="w-8 h-8 rounded-xl bg-slate-100 dark:bg-white/5 flex items-center justify-center font-black shrink-0 text-[#cfaf72] text-xs uppercase">
                               {(com.name || "Anônimo").charAt(0)}
                             </div>
-                            <div className="space-y-1">
+                            <div className="space-y-1 flex-grow text-left">
                               <div className="flex items-center gap-2 flex-wrap">
                                 <span className="text-xs font-black text-slate-800 dark:text-white leading-none">
                                   {com.name || "Anônimo"}
                                 </span>
-                                {com.device_id === deviceId && (
+                                 {(com.device_id === deviceId || (isCommentOwner(com) && !isAdmin)) && (
                                   <span className="text-[9px] bg-slate-100 dark:bg-white/5 text-slate-400 dark:text-slate-300 rounded-lg px-2 py-0.5 uppercase tracking-wide font-black">Você</span>
                                 )}
                                 <span className="text-[10px] text-muted font-mono ml-auto">
                                   {new Date(com.created_at).toLocaleDateString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
                                 </span>
                               </div>
-                              <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 font-semibold leading-relaxed">
-                                {com.comment}
-                              </p>
+                              {editingCommentId === com.id ? (
+                                <div className="flex gap-2 mt-1.5 w-full items-center">
+                                  <input
+                                    type="text"
+                                    value={editingCommentText}
+                                    onChange={(e) => setEditingCommentText(e.target.value)}
+                                    className="flex-grow bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-white/10 text-slate-800 dark:text-white text-xs py-1 px-2 rounded-lg focus:outline-none focus:border-accent font-semibold"
+                                    autoFocus
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => handleUpdateComment(com.id, editingCommentText)}
+                                    className="p-1 px-2.5 bg-accent hover:bg-accent-light text-secondary rounded-lg text-[10px] font-extrabold uppercase shrink-0 transition cursor-pointer"
+                                  >
+                                    Salvar
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setEditingCommentId(null);
+                                      setEditingCommentText("");
+                                    }}
+                                    className="p-1 px-2.5 hover:bg-slate-150 dark:hover:bg-white/5 text-slate-500 rounded-lg text-[10px] font-extrabold uppercase shrink-0 transition cursor-pointer"
+                                  >
+                                    Cancelar
+                                  </button>
+                                </div>
+                              ) : (
+                                <>
+                                  <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 font-semibold leading-relaxed">
+                                    {com.comment}
+                                  </p>
+                                  {isCommentOwner(com) && (
+                                    <div className="flex items-center gap-2 mt-1.5">
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setEditingCommentId(com.id);
+                                          setEditingCommentText(com.comment);
+                                        }}
+                                        className="text-[9px] text-slate-400 hover:text-accent font-black uppercase tracking-wider flex items-center gap-1 transition active:scale-95 cursor-pointer"
+                                      >
+                                        <Pencil size={8} /> Editar
+                                      </button>
+                                      <span className="text-slate-200 dark:text-white/10 text-xs leading-none">•</span>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleDeleteComment(com.id)}
+                                        className="text-[9px] text-slate-400 hover:text-red-400 font-black uppercase tracking-wider flex items-center gap-1 transition active:scale-95 cursor-pointer"
+                                      >
+                                        <Trash2 size={8} /> Excluir
+                                      </button>
+                                    </div>
+                                  )}
+                                </>
+                              )}
                             </div>
                           </div>
                         ))

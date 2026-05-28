@@ -456,7 +456,7 @@ export default function LivretoManager() {
   return (
     <>
       {/* Floating Booklet Indicator bottom action button */}
-      <div className="fixed bottom-24 right-4 z-[130] font-sans">
+      <div className="fixed bottom-24 lg:bottom-12 left-4 sm:left-6 lg:left-8 z-[130] font-sans">
         <motion.button
           onClick={() => setIsOpen(true)}
           className={cn(
@@ -492,7 +492,7 @@ export default function LivretoManager() {
             initial={{ opacity: 0, y: 50, scale: 0.9 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, scale: 0.9 }}
-            className="fixed bottom-36 left-4 right-4 sm:left-auto sm:right-4 z-[140] w-full max-w-sm bg-emerald-950 text-emerald-100 border border-emerald-900/30 p-4 rounded-2xl shadow-xl flex items-center gap-3 backdrop-blur"
+            className="fixed bottom-36 left-4 right-4 sm:right-auto sm:left-6 z-[140] w-full max-w-sm bg-emerald-950 text-emerald-100 border border-emerald-900/30 p-4 rounded-2xl shadow-xl flex items-center gap-3 backdrop-blur"
           >
             <Check size={18} className="text-emerald-400 shrink-0" />
             <span className="text-xs font-bold">{successMsg}</span>
@@ -504,7 +504,7 @@ export default function LivretoManager() {
             initial={{ opacity: 0, y: 50, scale: 0.9 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, scale: 0.9 }}
-            className="fixed bottom-36 left-4 right-4 sm:left-auto sm:right-4 z-[140] w-full max-w-sm bg-red-950 text-red-100 border border-red-900/30 p-4 rounded-2xl shadow-xl flex items-center gap-3 backdrop-blur"
+            className="fixed bottom-36 left-4 right-4 sm:right-auto sm:left-6 z-[140] w-full max-w-sm bg-red-950 text-red-100 border border-red-900/30 p-4 rounded-2xl shadow-xl flex items-center gap-3 backdrop-blur"
           >
             <AlertCircle size={18} className="text-red-400 shrink-0" />
             <span className="text-xs font-bold">{errorMsg}</span>
@@ -515,16 +515,16 @@ export default function LivretoManager() {
       {/* Slide-over panel for booklet construction */}
       <AnimatePresence>
         {isOpen && (
-          <div className="fixed inset-0 z-[140] bg-slate-950/75 backdrop-blur-sm flex justify-end">
+          <div className="fixed inset-0 z-[140] bg-slate-950/75 backdrop-blur-sm flex justify-start">
             {/* Click-outside layer */}
             <div className="absolute inset-0" onClick={() => setIsOpen(false)} />
             
             <motion.div
-              initial={{ x: "100%" }}
+              initial={{ x: "-100%" }}
               animate={{ x: 0 }}
-              exit={{ x: "100%" }}
+              exit={{ x: "-100%" }}
               transition={{ type: "spring", damping: 30, stiffness: 220 }}
-              className="relative w-full max-w-md h-full bg-white dark:bg-slate-950 shadow-2xl border-l border-slate-100 dark:border-border-dark flex flex-col justify-between font-sans"
+              className="relative w-full max-w-md h-full bg-white dark:bg-slate-950 shadow-2xl border-r border-slate-100 dark:border-border-dark flex flex-col justify-between font-sans"
             >
               <div className="p-8 border-b border-slate-100 dark:border-border-dark flex items-center justify-between">
                 <div className="flex items-center gap-3">

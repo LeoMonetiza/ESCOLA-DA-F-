@@ -48,7 +48,7 @@ export default function AITeacher() {
   };
 
   return (
-    <div className="fixed bottom-24 lg:bottom-12 right-6 z-[100]">
+    <div className="fixed bottom-24 lg:bottom-12 right-4 sm:right-6 lg:right-8 z-[100]">
       <AnimatePresence>
         {isOpen && (
           <motion.div

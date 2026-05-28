@@ -11,13 +11,14 @@ CREATE TABLE IF NOT EXISTS usuarios (
     criado_em TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- 2. TABELA DE COMUNICADOS (MURAL)
-CREATE TABLE IF NOT EXISTS comunicados (
+-- 2. TABELA DE POSTAGENS (MURAL)
+CREATE TABLE IF NOT EXISTS postagens (
     id VARCHAR(100) PRIMARY KEY,
     titulo VARCHAR(255) NOT NULL,
     mensagem TEXT NOT NULL,
     data_publicacao VARCHAR(50) NOT NULL,
     autor VARCHAR(100) DEFAULT 'Lemos Faya de Arcanjo',
+    imagem_url TEXT,
     criado_em TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -169,7 +170,7 @@ ALTER TABLE dicionario_biblico ENABLE ROW LEVEL SECURITY;
 ALTER TABLE historias_biografias ENABLE ROW LEVEL SECURITY;
 ALTER TABLE teologia_doutrinas ENABLE ROW LEVEL SECURITY;
 ALTER TABLE licoes_curso ENABLE ROW LEVEL SECURITY;
-ALTER TABLE comunicados ENABLE ROW LEVEL SECURITY;
+ALTER TABLE postagens ENABLE ROW LEVEL SECURITY;
 ALTER TABLE configuracoes_sociais ENABLE ROW LEVEL SECURITY;
 ALTER TABLE progresso_estudante ENABLE ROW LEVEL SECURITY;
 ALTER TABLE posts ENABLE ROW LEVEL SECURITY;
@@ -216,11 +217,11 @@ DROP POLICY IF EXISTS "Controle total para administradores curso" ON licoes_curs
 DROP POLICY IF EXISTS "Acesso público irrestrito curso" ON licoes_curso;
 CREATE POLICY "Acesso público irrestrito curso" ON licoes_curso FOR ALL USING (true) WITH CHECK (true);
 
--- 7. Comunicados (Mural)
-DROP POLICY IF EXISTS "Leitura pública para comunicados" ON comunicados;
-DROP POLICY IF EXISTS "Controle total para administradores comunicados" ON comunicados;
-DROP POLICY IF EXISTS "Acesso público irrestrito comunicados" ON comunicados;
-CREATE POLICY "Acesso público irrestrito comunicados" ON comunicados FOR ALL USING (true) WITH CHECK (true);
+-- 7. Postagens (Mural)
+DROP POLICY IF EXISTS "Leitura pública para postagens" ON postagens;
+DROP POLICY IF EXISTS "Controle total para administradores postagens" ON postagens;
+DROP POLICY IF EXISTS "Acesso público irrestrito postagens" ON postagens;
+CREATE POLICY "Acesso público irrestrito postagens" ON postagens FOR ALL USING (true) WITH CHECK (true);
 
 -- 8. Configurações Sociais / Gerais
 DROP POLICY IF EXISTS "Leitura pública para configuracoes" ON configuracoes_sociais;
@@ -266,7 +267,7 @@ DECLARE
         'historias_biografias',
         'teologia_doutrinas',
         'licoes_curso',
-        'comunicados',
+        'postagens',
         'configuracoes_sociais',
         'posts',
         'comments',

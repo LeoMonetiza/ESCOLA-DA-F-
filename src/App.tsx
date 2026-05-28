@@ -915,24 +915,24 @@ function Navbar({ isDark, toggleDark, isAdmin, setIsAdmin, dbStatus, onSync, sup
           </div>
         </div>
 
-        {/* Desktop Navigation Links */}
-        <div className="hidden lg:flex items-center gap-1 xl:gap-2 mx-4 overflow-x-auto scrollbar-hide">
+        {/* Desktop Navigation Links - Tightly packed and beautifully padded to fit all tabs */}
+        <div className="hidden lg:flex items-center gap-1 xl:gap-1.5 mx-auto px-4 max-w-full overflow-x-auto scrollbar-hide">
           {navItems.map((item) => (
             <Link 
               key={item.path} 
               to={item.path}
               className={cn(
-                "flex items-center gap-2 px-3 py-2 rounded-xl font-bold transition-all duration-300 group text-xs xl:text-sm tracking-wide shrink-0",
+                "flex items-center gap-1.5 px-2.5 py-2 xl:px-3 xl:py-2.5 rounded-xl font-bold transition-all duration-300 group text-[11px] xl:text-xs 2xl:text-sm tracking-tight xl:tracking-wide shrink-0",
                 location.pathname === item.path 
                   ? "bg-slate-100 dark:bg-white/10 text-secondary dark:text-white shadow-md shadow-black/5" 
                   : "text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-secondary dark:hover:text-white"
               )}
             >
               <span className={cn(
-                "transition-transform group-hover:scale-110",
+                "transition-transform group-hover:scale-110 shrink-0",
                 location.pathname === item.path ? "text-[#cfaf72]" : "text-slate-400 group-hover:text-secondary dark:group-hover:text-white"
               )}>
-                {item.icon}
+                {React.cloneElement(item.icon as React.ReactElement, { size: 16 })}
               </span>
               {item.name}
             </Link>
@@ -1114,6 +1114,72 @@ function Navbar({ isDark, toggleDark, isAdmin, setIsAdmin, dbStatus, onSync, sup
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Elegant Mobile/Tablet Bottom Navigation Bar (<1024px) for permanent tab visibility */}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 h-16 bg-white dark:bg-secondary border-t border-slate-150 dark:border-white/5 z-40 flex items-center justify-around px-2 pb-safe shadow-[0_-4px_12px_rgba(0,0,0,0.06)] backdrop-blur-md">
+        <Link 
+          to="/" 
+          onClick={() => setIsOpen(false)}
+          className={cn(
+            "flex flex-col items-center justify-center flex-grow py-1 text-[10px] font-black tracking-wide transition-all active:scale-95",
+            location.pathname === "/" ? "text-accent" : "text-slate-400 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white"
+          )}
+        >
+          <HomeIcon size={18} className={location.pathname === "/" ? "scale-110 text-accent transition-transform" : "text-slate-450 dark:text-slate-400"} />
+          <span className="mt-1 font-sans font-extrabold uppercase text-[9px]">Início</span>
+        </Link>
+
+        <Link 
+          to="/estudos" 
+          onClick={() => setIsOpen(false)}
+          className={cn(
+            "flex flex-col items-center justify-center flex-grow py-1 text-[10px] font-black tracking-wide transition-all active:scale-95",
+            location.pathname === "/estudos" ? "text-accent" : "text-slate-400 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white"
+          )}
+        >
+          <BookOpen size={18} className={location.pathname === "/estudos" ? "scale-110 text-accent transition-transform" : "text-slate-450 dark:text-slate-400"} />
+          <span className="mt-1 font-sans font-extrabold uppercase text-[9px]">Estudos</span>
+        </Link>
+
+        <Link 
+          to="/curso" 
+          onClick={() => setIsOpen(false)}
+          className={cn(
+            "flex flex-col items-center justify-center flex-grow py-1 text-[10px] font-black tracking-wide transition-all active:scale-95",
+            location.pathname === "/curso" ? "text-accent" : "text-slate-400 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white"
+          )}
+        >
+          <GraduationCap size={18} className={location.pathname === "/curso" ? "scale-110 text-accent transition-transform" : "text-slate-450 dark:text-slate-400"} />
+          <span className="mt-1 font-sans font-extrabold uppercase text-[9px]">Curso</span>
+        </Link>
+
+        <Link 
+          to="/comunidade" 
+          onClick={() => setIsOpen(false)}
+          className={cn(
+            "flex flex-col items-center justify-center flex-grow py-1 text-[10px] font-black tracking-wide transition-all active:scale-95",
+            location.pathname === "/comunidade" ? "text-accent" : "text-slate-400 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white"
+          )}
+        >
+          <MessageCircle size={18} className={location.pathname === "/comunidade" ? "scale-110 text-accent transition-transform" : "text-slate-450 dark:text-slate-400"} />
+          <span className="mt-1 font-sans font-extrabold uppercase text-[9px]">Mural</span>
+        </Link>
+
+        <button 
+          onClick={() => setIsOpen(!isOpen)}
+          className={cn(
+            "flex flex-col items-center justify-center flex-grow py-1 text-[10px] font-black tracking-wide transition-all active:scale-95",
+            isOpen ? "text-accent" : "text-slate-400 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white"
+          )}
+        >
+          {isOpen ? (
+            <X size={18} className="scale-110 text-accent transition-transform animate-none" />
+          ) : (
+            <Menu size={18} className="text-slate-450 dark:text-slate-400" />
+          )}
+          <span className="mt-1 font-sans font-extrabold uppercase text-[9px]">{isOpen ? "Fechar" : "Mais"}</span>
+        </button>
+      </div>
     </>
   );
 }
@@ -1121,7 +1187,7 @@ function Navbar({ isDark, toggleDark, isAdmin, setIsAdmin, dbStatus, onSync, sup
 const SQL_SCHEMAS = {
   postgres: {
     usuarios: `-- TABELA DE USUÁRIOS (PostgreSQL)\nCREATE TABLE IF NOT EXISTS usuarios (\n    id SERIAL PRIMARY KEY,\n    nome VARCHAR(150) NOT NULL,\n    email VARCHAR(255) UNIQUE NOT NULL,\n    senha_hash VARCHAR(255) NOT NULL,\n    cargo VARCHAR(50) DEFAULT 'estudante',\n    criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP\n);`,
-    comunicados: `-- TABELA DE COMUNICADOS / MURAL (PostgreSQL)\nCREATE TABLE IF NOT EXISTS comunicados (\n    id VARCHAR(100) PRIMARY KEY,\n    titulo VARCHAR(255) NOT NULL,\n    mensagem TEXT NOT NULL,\n    data_publicacao VARCHAR(50) NOT NULL,\n    autor VARCHAR(100) DEFAULT 'Lemos Faya de Arcanjo',\n    criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP\n);`,
+    postagens: `-- TABELA DE POSTAGENS / MURAL (PostgreSQL)\nCREATE TABLE IF NOT EXISTS postagens (\n    id VARCHAR(100) PRIMARY KEY,\n    titulo VARCHAR(255) NOT NULL,\n    mensagem TEXT NOT NULL,\n    data_publicacao VARCHAR(50) NOT NULL,\n    autor VARCHAR(100) DEFAULT 'Lemos Faya de Arcanjo',\n    imagem_url TEXT,\n    criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP\n);`,
     redes: `-- TABELA DE CONFIGURAÇÕES SOCIAIS / CONTATOS (PostgreSQL)\nCREATE TABLE IF NOT EXISTS configuracoes_sociais (\n    chave VARCHAR(50) PRIMARY KEY,\n    valor TEXT NOT NULL,\n    atualizado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP\n);\n\n-- POPULAR CONFIGURAÇÕES SOCIAIS SEÇÃO WHATSAPP (EVITANDO CONFLITOS)\nINSERT INTO configuracoes_sociais (chave, valor) VALUES \n('whatsapp', '936386566'),\n('instagram', 'https://instagram.com/escoladafe'),\n('youtube', 'https://youtube.com/escoladafe'),\n('facebook', 'https://www.facebook.com/lemosmabiala.faya/')\nON CONFLICT (chave) DO NOTHING;`,
     progresso: `-- TABELA DE PROGRESSO DO ALUNO (PostgreSQL)\nCREATE TABLE IF NOT EXISTS progresso_estudante (\n    id SERIAL PRIMARY KEY,\n    aluno_email VARCHAR(255) NOT NULL,\n    item_id VARCHAR(100) NOT NULL,\n    completado BOOLEAN DEFAULT TRUE,\n    completado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,\n    UNIQUE(aluno_email, item_id)\n);`,
     estudos: `-- TABELA DE ESTUDOS TEMÁTICOS / ARTIGOS (PostgreSQL)\nCREATE TABLE IF NOT EXISTS estudos_basicos (\n    id VARCHAR(100) PRIMARY KEY,\n    titulo VARCHAR(255) NOT NULL,\n    descricao TEXT NOT NULL,\n    categoria VARCHAR(100) NOT NULL,\n    conteudo TEXT NOT NULL,\n    autor VARCHAR(150) DEFAULT 'Lemos Faya de Arcanjo',\n    criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP\n);`,
@@ -1133,7 +1199,7 @@ const SQL_SCHEMAS = {
   },
   sqlite: {
     usuarios: `-- TABELA DE USUÁRIOS (SQLite)\nCREATE TABLE IF NOT EXISTS usuarios (\n    id INTEGER PRIMARY KEY AUTOINCREMENT,\n    nome TEXT NOT NULL,\n    email TEXT UNIQUE NOT NULL,\n    senha_hash TEXT NOT NULL,\n    cargo TEXT DEFAULT 'estudante',\n    criado_em DATETIME DEFAULT CURRENT_TIMESTAMP\n);`,
-    comunicados: `-- TABELA DE COMUNICADOS / MURAL (SQLite)\nCREATE TABLE IF NOT EXISTS comunicados (\n    id TEXT PRIMARY KEY,\n    titulo TEXT NOT NULL,\n    mensagem TEXT NOT NULL,\n    data_publicacao TEXT NOT NULL,\n    autor TEXT DEFAULT 'Lemos Faya de Arcanjo',\n    criado_em DATETIME DEFAULT CURRENT_TIMESTAMP\n);`,
+    postagens: `-- TABELA DE POSTAGENS / MURAL (SQLite)\nCREATE TABLE IF NOT EXISTS postagens (\n    id TEXT PRIMARY KEY,\n    titulo TEXT NOT NULL,\n    mensagem TEXT NOT NULL,\n    data_publicacao TEXT NOT NULL,\n    autor TEXT DEFAULT 'Lemos Faya de Arcanjo',\n    imagem_url TEXT,\n    criado_em DATETIME DEFAULT CURRENT_TIMESTAMP\n);`,
     redes: `-- TABELA DE CONFIGURAÇÕES SOCIAIS (SQLite)\nCREATE TABLE IF NOT EXISTS configuracoes_sociais (\n    chave TEXT PRIMARY KEY,\n    valor TEXT NOT NULL,\n    atualizado_em DATETIME DEFAULT CURRENT_TIMESTAMP\n);\n\n-- CONFIGURAÇÕES PREVIAMENTE SETADAS\nINSERT OR IGNORE INTO configuracoes_sociais (chave, valor) VALUES \n('whatsapp', '936386566'),\n('instagram', 'https://instagram.com/escoladafe'),\n('youtube', 'https://youtube.com/escoladafe'),\n('facebook', 'https://www.facebook.com/lemosmabiala.faya/');`,
     progresso: `-- TABELA DE PROGRESSO DO ALUNO (SQLite)\nCREATE TABLE IF NOT EXISTS progresso_estudante (\n    id INTEGER PRIMARY KEY AUTOINCREMENT,\n    aluno_email TEXT NOT NULL,\n    item_id TEXT NOT NULL,\n    completado INTEGER DEFAULT 1,\n    completado_em DATETIME DEFAULT CURRENT_TIMESTAMP,\n    UNIQUE(aluno_email, item_id)\n);`,
     estudos: `-- TABELA DE ESTUDOS TEMÁTICOS (SQLite)\nCREATE TABLE IF NOT EXISTS estudos_basicos (\n    id TEXT PRIMARY KEY,\n    titulo TEXT NOT NULL,\n    descricao TEXT NOT NULL,\n    categoria TEXT NOT NULL,\n    conteudo TEXT NOT NULL,\n    autor TEXT DEFAULT 'Lemos Faya de Arcanjo',\n    criado_em DATETIME DEFAULT CURRENT_TIMESTAMP\n);`,
@@ -1176,11 +1242,12 @@ function Home({
 }) {
   const [newTitle, setNewTitle] = useState("");
   const [newMessage, setNewMessage] = useState("");
+  const [newImageUrl, setNewImageUrl] = useState("");
   const [newType, setNewType] = useState("notification"); // "notification" | "publication" | "alert" | "teaching"
   const [isFormOpen, setIsFormOpen] = useState(false);
 
   const [activeSqlTab, setActiveSqlTab] = useState<"postgres" | "sqlite">("postgres");
-  const [activeSqlTable, setActiveSqlTable] = useState<"usuarios" | "comunicados" | "redes" | "progresso" | "estudos" | "dicionario" | "teologia" | "curso" | "apoio" | "homens">("usuarios");
+  const [activeSqlTable, setActiveSqlTable] = useState<"usuarios" | "postagens" | "redes" | "progresso" | "estudos" | "dicionario" | "teologia" | "curso" | "apoio" | "homens">("usuarios");
   const [copied, setCopied] = useState(false);
 
   const handleCopySql = (code: string) => {
@@ -1204,22 +1271,52 @@ function Home({
       title: newTitle,
       date: new Date().toLocaleDateString("pt-BR"),
       type: newType,
-      message: newMessage
+      message: newMessage,
+      imageUrl: newImageUrl
     };
     setAnnouncements(prev => [newNotice, ...prev]);
+
+    // Push right away to database
+    fetch("/api/db/postagens/add", {
+      method: "POST",
+      headers: { "Content-Type" : "application/json" },
+      body: JSON.stringify({
+        id: newNotice.id,
+        titulo: newNotice.title,
+        data_publicacao: newNotice.date,
+        mensagem: newNotice.message,
+        autor: "Lemos Faya de Arcanjo",
+        imagem_url: newNotice.imageUrl
+      })
+    }).catch(err => console.warn("Erro ao salvar postagem via API imediatamente:", err));
+
     setNewTitle("");
     setNewMessage("");
+    setNewImageUrl("");
     setNewType("notification");
     setIsFormOpen(false);
-    alert("Publicada/Enviada com sucesso no mural!");
+    alert("Publicada com sucesso no mural de postagens!");
   };
 
   const handleDeleteAnnouncement = (id: string) => {
     triggerConfirm(
-      "Excluir Comunicado",
-      "Você tem certeza que deseja excluir permanentemente este comunicado do mural da comunidade?",
+      "Excluir Postagem",
+      "Você tem certeza que deseja excluir permanentemente esta postagem do mural da comunidade?",
       () => {
         setAnnouncements(prev => prev.filter(a => a.id !== id));
+        fetch(`/api/db/postagens/${id}`, {
+          method: "DELETE"
+        }).catch(err => console.warn("Erro ao deletar postagem via API:", err));
+
+        try {
+          const currentDeleted = JSON.parse(localStorage.getItem("escola_da_fe_deleted_ids") || "[]");
+          if (!currentDeleted.includes(id)) {
+            currentDeleted.push(id);
+            localStorage.setItem("escola_da_fe_deleted_ids", JSON.stringify(currentDeleted));
+          }
+        } catch (e) {
+          console.warn("Error managing deleted IDs in localStorage", e);
+        }
       }
     );
   };
@@ -1277,7 +1374,7 @@ function Home({
               onClick={() => setIsFormOpen(!isFormOpen)}
               className="px-6 py-3 bg-[#cfaf72] text-secondary font-black text-xs uppercase tracking-wider rounded-xl hover:bg-white transition-all flex items-center gap-2"
             >
-              {isFormOpen ? "Fechar Painel" : "Adicionar Comunicado"}
+              {isFormOpen ? "Fechar Painel" : "Adicionar Postagem"}
             </button>
           )}
         </div>
@@ -1285,16 +1382,16 @@ function Home({
         {isFormOpen && isAdmin && (
           <form onSubmit={handleAddAnnouncement} className="mb-8 p-6 bg-white dark:bg-slate-900 rounded-3xl border-2 border-[#cfaf72]/30 space-y-4 shadow-xl">
             <h4 className="font-black text-heading text-lg flex items-center gap-2 text-[#cfaf72]">
-              <span>📢</span> Criar Nova Publicação ou Notificação (Painel Admin)
+              <span>📢</span> Criar Nova Postagem ou Notificação (Painel Admin)
             </h4>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="md:col-span-2">
-                <label className="text-xs font-black uppercase text-slate-400 dark:text-slate-500 tracking-wider block mb-1">Título da Publicação/Notificação</label>
+                <label className="text-xs font-black uppercase text-slate-400 dark:text-slate-500 tracking-wider block mb-1">Título da Postagem/Notificação</label>
                 <input
                   type="text"
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
-                  placeholder="Ex: Novo Estódulo de Soteriologia Disponível!"
+                  placeholder="Ex: Novo Estômago de Soteriologia Disponível!"
                   className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 py-3 px-4 rounded-xl focus:outline-none focus:border-accent text-sm font-semibold"
                 />
               </div>
@@ -1323,11 +1420,23 @@ function Home({
                 className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 py-3 px-4 rounded-xl focus:outline-none focus:border-accent text-sm leading-relaxed"
               />
             </div>
+            
+            <div>
+              <label className="text-xs font-black uppercase text-slate-400 dark:text-slate-500 tracking-wider block mb-1">URL da Imagem Ilustrativa (Opcional)</label>
+              <input
+                type="url"
+                value={newImageUrl}
+                onChange={(e) => setNewImageUrl(e.target.value)}
+                placeholder="Ex: https://images.unsplash.com/photo-... (deixe vazio se não houver imagem)"
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 py-3 px-4 rounded-xl focus:outline-none focus:border-accent text-sm font-semibold"
+              />
+            </div>
+
             <button
               type="submit"
               className="px-6 py-3.5 bg-secondary hover:bg-primary text-white font-black text-xs uppercase tracking-wider rounded-xl transition-all shadow-md active:scale-95"
             >
-              Emitir Publicação / Notificação
+              Publicar no Mural
             </button>
           </form>
         )}
@@ -1336,7 +1445,7 @@ function Home({
           {announcements.length === 0 ? (
             <p className="text-slate-400 dark:text-slate-500 font-medium text-sm">Nenhum aviso no mural de avisos da Escola.</p>
           ) : (
-            announcements.map((a: any) => {
+            announcements.map((a: any, idx: number) => {
               // Custom colors based on Type of announcement
               let badgeColor = "bg-blue-100 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400";
               let badgeLabel = "📢 Notificação";
@@ -1353,7 +1462,7 @@ function Home({
               }
 
               return (
-                <div key={a.id} className="relative p-6 bg-card-light dark:bg-card-dark rounded-2xl border border-border-light dark:border-border-dark flex flex-col justify-between shadow-xl group hover:border-[#cfaf72]/20 transition-all">
+                <div key={a.id || `announcement-${idx}`} className="relative p-6 bg-card-light dark:bg-card-dark rounded-2xl border border-border-light dark:border-border-dark flex flex-col justify-between shadow-xl group hover:border-[#cfaf72]/20 transition-all">
                   <div>
                     <div className="flex items-center justify-between gap-4 mb-3">
                       <div className="flex items-center gap-2">
@@ -1373,6 +1482,16 @@ function Home({
                       )}
                     </div>
                     <h4 className="font-extrabold text-heading text-lg mb-2">{a.title}</h4>
+                    {a.imageUrl && (
+                      <div className="w-full h-48 overflow-hidden rounded-xl mb-4 bg-slate-100 dark:bg-slate-800/80 border border-slate-200/50 dark:border-slate-700/50 relative">
+                        <img 
+                          src={a.imageUrl} 
+                          alt={a.title} 
+                          referrerPolicy="no-referrer"
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        />
+                      </div>
+                    )}
                     <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed font-semibold block whitespace-pre-wrap">{a.message}</p>
                   </div>
                 </div>
@@ -1626,15 +1745,15 @@ function Home({
                 </button>
                 <button
                   type="button"
-                  onClick={() => setActiveSqlTable("comunicados")}
+                  onClick={() => setActiveSqlTable("postagens")}
                   className={cn(
                     "px-4.5 py-3 rounded-xl border transition-all uppercase tracking-wider text-xs font-black",
-                    activeSqlTable === "comunicados"
+                    activeSqlTable === "postagens"
                       ? "bg-[#cfaf72]/15 border-[#cfaf72]/30 text-[#cfaf72] shadow-md"
                       : "border-border-light dark:border-border-dark text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
                   )}
                 >
-                  📢 Mural / Avisos
+                  📢 Mural / Postagens
                 </button>
                 <button
                   type="button"
@@ -1860,9 +1979,9 @@ function Home({
                 <Link to="/dicionario" className="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl text-primary hover:bg-primary hover:text-white transition-all"><ChevronRight size={20} /></Link>
               </div>
               <div className="grid grid-cols-2 gap-4">
-                {[...BIBLICAL_NAMES].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR')).slice(0, 8).map((item) => (
+                {[...BIBLICAL_NAMES].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR')).slice(0, 8).map((item, idx) => (
                   <button 
-                    key={item.name} 
+                    key={`${item.name}-${idx}`} 
                     onClick={() => onSelectItem(item)}
                     className="bg-slate-50 dark:bg-slate-800/40 p-3 sm:p-5 rounded-xl sm:rounded-[1.5rem] text-xs sm:text-sm font-black text-center text-slate-600 dark:text-slate-300 break-words whitespace-normal hover:bg-secondary hover:text-white transition-all shadow-sm active:scale-95 border border-transparent hover:border-accent"
                   >
@@ -2039,10 +2158,10 @@ function Studies({
       animate={{ opacity: 1 }}
       className="space-y-12"
     >
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="max-w-xl">
-          <h2 className="text-5xl font-black text-heading mb-6 tracking-tight">Estudos Temáticos</h2>
-          <p className="text-muted text-xl leading-relaxed font-medium">Estude temas fundamentais com base sólida nas Escrituras e estudos exegéticos de alta profundidade.</p>
+          <h2 className="text-3xl md:text-4xl font-black text-heading mb-2 tracking-tight">Estudos Temáticos</h2>
+          <p className="text-muted text-sm md:text-base leading-relaxed font-semibold">Estude temas fundamentais com base sólida nas Escrituras e estudos exegéticos de alta profundidade.</p>
         </div>
         {isAdmin && (
           <button
@@ -2056,7 +2175,7 @@ function Studies({
               }
               setIsFormOpen(!isFormOpen);
             }}
-            className="px-6 py-4 bg-accent text-secondary font-black text-xs uppercase tracking-wider rounded-2xl hover:scale-105 transition-all self-start md:self-center"
+            className="px-5 py-3.5 bg-accent text-secondary font-black text-xs uppercase tracking-wider rounded-2xl hover:scale-105 transition-all self-start md:self-center"
           >
             {isFormOpen ? "Fechar Painel" : "Criar Novo Estudo"}
           </button>
@@ -2142,19 +2261,19 @@ function Studies({
       {/* Studies discreet ad banner as requested: ("Estudos → Banner discreto") */}
       <ThemeBanner type="discreet" />
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
         {filtered.map((theme, i) => (
           <motion.div 
-            key={theme.id}
+            key={`${theme.id || theme.title}-${i}`}
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: i * 0.01 }}
             onClick={() => onSelectItem(theme)}
-            className="card group cursor-pointer border-none shadow-lg hover:shadow-2xl hover:-translate-y-2 transition-all flex flex-col justify-between"
+            className="card group cursor-pointer border-none shadow-lg hover:shadow-2xl hover:-translate-y-2 transition-all flex flex-col justify-between p-5"
           >
             <div>
-              <div className="flex justify-between items-center mb-8">
-                <div className="w-16 h-16 bg-slate-50 dark:bg-slate-800 rounded-2xl flex items-center justify-center text-3xl group-hover:bg-primary group-hover:scale-110 group-hover:rotate-6 transition-all shadow-inner">
+              <div className="flex justify-between items-center mb-4">
+                <div className="w-12 h-12 bg-slate-50 dark:bg-slate-800 rounded-xl flex items-center justify-center text-xl group-hover:bg-primary group-hover:scale-110 group-hover:rotate-6 transition-all shadow-inner">
                   📖
                 </div>
                 {isAdmin && (
@@ -2169,26 +2288,26 @@ function Studies({
                         setNewBibleVerse(theme.bibleVerse || "");
                         setIsFormOpen(true);
                       }}
-                      className="p-2 text-slate-400 hover:text-primary hover:bg-slate-500/10 rounded-xl transition-all"
+                      className="p-1.5 text-slate-400 hover:text-primary hover:bg-slate-500/10 rounded-xl transition-all"
                       title="Editar estudo"
                     >
-                      <Pencil size={16} />
+                      <Pencil size={14} />
                     </button>
                     <button
                       onClick={(e) => handleDeleteTheme(theme.id, e)}
-                      className="p-2 text-red-400 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all"
+                      className="p-1.5 text-red-400 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all"
                       title="Excluir estudo"
                     >
-                      <Trash2 size={16} />
+                      <Trash2 size={14} />
                     </button>
                   </div>
                 )}
               </div>
-              <h3 className="font-black text-2xl text-heading mb-4 group-hover:text-primary transition-colors leading-tight">{theme.title}</h3>
-              <p className="text-sm text-muted line-clamp-4 leading-relaxed mb-8 font-medium">{theme.description}</p>
+              <h3 className="font-black text-lg text-heading mb-2 group-hover:text-primary transition-colors leading-tight">{theme.title}</h3>
+              <p className="text-xs text-muted line-clamp-4 leading-relaxed mb-4 font-semibold">{theme.description}</p>
             </div>
-            <div className="flex items-center gap-3 text-primary font-black text-xs uppercase tracking-widest mt-auto group-hover:translate-x-2 transition-transform">
-              Ver Estudo Completo <ChevronRight size={16} />
+            <div className="flex items-center gap-2 text-primary font-black text-[10px] uppercase tracking-widest mt-auto group-hover:translate-x-2 transition-transform">
+              Ver Estudo Completo <ChevronRight size={14} />
             </div>
           </motion.div>
         ))}
@@ -2457,9 +2576,9 @@ function Dictionary({
       <ThemeBanner type="small" />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        {filtered.map((item) => (
+        {filtered.map((item, index) => (
           <div 
-            key={item.name} 
+            key={`${item.id || item.name}-${index}`} 
             onClick={() => onSelectItem(item)}
             className="flex bg-card-light dark:bg-card-dark p-6 rounded-[2rem] border border-border-light dark:border-border-dark items-center gap-6 hover:shadow-2xl hover:border-accent hover:-translate-y-1 transition-all cursor-pointer group shadow-sm relative overflow-hidden"
           >
@@ -2634,12 +2753,12 @@ function Stories({
     <motion.div 
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="space-y-20"
+      className="space-y-12"
     >
-      <div className="relative bg-secondary rounded-[4rem] p-12 md:p-20 text-white overflow-hidden shadow-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-10">
+      <div className="relative bg-secondary rounded-[2rem] p-6 md:p-10 text-white overflow-hidden shadow-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
         <div className="relative z-10 max-w-xl">
-          <h2 className="text-5xl md:text-6xl font-black mb-8 tracking-tighter leading-tight">Biografias &<br/> Geografia Sagrada</h2>
-          <p className="text-white/70 text-xl leading-relaxed font-medium">Entenda o contexto físico e pessoal das narrativas bíblicas para uma compreensão holística das Escrituras.</p>
+          <h2 className="text-3xl md:text-4xl font-black mb-4 tracking-tighter leading-tight">Biografias &<br/> Geografia Sagrada</h2>
+          <p className="text-white/70 text-sm md:text-base leading-relaxed font-semibold">Entenda o contexto físico e pessoal das narrativas bíblicas para uma compreensão holística das Escrituras.</p>
         </div>
         {isAdmin && (
           <button
@@ -2653,13 +2772,13 @@ function Stories({
               }
               setIsFormOpen(!isFormOpen);
             }}
-            className="px-8 py-5 bg-accent text-secondary font-black text-xs uppercase tracking-wider rounded-2xl hover:scale-105 transition-all self-start md:self-center relative z-10"
+            className="px-5 py-3.5 bg-accent text-secondary font-black text-xs uppercase tracking-wider rounded-2xl hover:scale-105 transition-all self-start md:self-center relative z-10"
           >
             {isFormOpen ? "Fechar Painel" : "Adicionar Matéria"}
           </button>
         )}
         <div className="absolute -top-10 -right-10 p-12 opacity-5 pointer-events-none rotate-12">
-          <MapPin size={400} />
+          <MapPin size={200} />
         </div>
       </div>
 
@@ -2739,27 +2858,27 @@ function Stories({
       {/* Stories discreet ad banner as requested: ("Histórias → Banner discreto") */}
       <ThemeBanner type="discreet" />
 
-      <div className="space-y-20">
+      <div className="space-y-12">
         <section>
-          <div className="flex items-center gap-6 mb-12">
-            <div className="w-2 h-10 bg-accent rounded-full" />
-            <h3 className="text-4xl font-black text-heading tracking-tight">Vidas Transformadas</h3>
+          <div className="flex items-center gap-4 mb-6">
+            <div className="w-1.5 h-6 bg-accent rounded-full" />
+            <h3 className="text-2xl font-black text-heading tracking-tight">Vidas Transformadas</h3>
           </div>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {stories
               .filter(s => s.type === 'character')
               .sort((a, b) => a.title.localeCompare(b.title, 'pt-BR'))
-              .map(story => (
-              <div key={story.id} onClick={() => onSelectItem(story)} className="card p-0 flex flex-col sm:flex-row overflow-hidden group cursor-pointer border-none shadow-xl hover:shadow-2xl hover:-translate-y-2 transition-all relative">
-                <div className="w-full sm:w-56 bg-slate-50 dark:bg-slate-800 flex-shrink-0 flex items-center justify-center text-slate-400 group-hover:bg-primary group-hover:text-white transition-all py-12 sm:py-0">
-                  <User size={64} className="group-hover:scale-110 transition-transform" />
+              .map((story, index) => (
+              <div key={`${story.id || story.title}-${index}`} onClick={() => onSelectItem(story)} className="card p-0 flex flex-col sm:flex-row overflow-hidden group cursor-pointer border-none shadow-xl hover:shadow-2xl hover:-translate-y-2 transition-all relative">
+                <div className="w-full sm:w-40 bg-slate-50 dark:bg-slate-800 flex-shrink-0 flex items-center justify-center text-slate-400 group-hover:bg-primary group-hover:text-white transition-all py-8 sm:py-0">
+                  <User size={40} className="group-hover:scale-110 transition-transform" />
                 </div>
-                <div className="p-10 flex flex-col justify-center flex-grow pr-16">
-                  <h4 className="font-black text-heading text-2xl mb-4 group-hover:text-primary transition-colors tracking-tight">{story.title}</h4>
-                  <p className="text-base text-muted leading-relaxed line-clamp-3 font-medium">{story.summary}</p>
+                <div className="p-5 sm:p-6 flex flex-col justify-center flex-grow pr-12">
+                  <h4 className="font-black text-heading text-lg mb-2 group-hover:text-primary transition-colors tracking-tight">{story.title}</h4>
+                  <p className="text-xs sm:text-sm text-muted leading-relaxed line-clamp-3 font-semibold">{story.summary}</p>
                 </div>
                 {isAdmin && (
-                  <div className="absolute right-6 bottom-6 flex items-center gap-1 z-10">
+                  <div className="absolute right-4 bottom-4 flex items-center gap-1 z-10">
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
@@ -2770,18 +2889,18 @@ function Stories({
                         setNewContent(story.content || "");
                         setNewBibleVerse(story.bibleVerse || "");
                         setIsFormOpen(true);
-                      }}
-                      className="p-2 text-slate-400 hover:text-primary hover:bg-slate-500/10 rounded-xl transition-all"
+                       }}
+                      className="p-1.5 text-slate-400 hover:text-primary hover:bg-slate-500/10 rounded-xl transition-all"
                       title="Editar biografia"
                     >
-                      <Pencil size={16} />
+                      <Pencil size={14} />
                     </button>
                     <button
                       onClick={(e) => handleDeleteStory(story.id, e)}
-                      className="p-2 text-red-400 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all"
+                      className="p-1.5 text-red-400 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all"
                       title="Excluir biografia"
                     >
-                      <Trash2 size={16} />
+                      <Trash2 size={14} />
                     </button>
                   </div>
                 )}
@@ -2791,25 +2910,25 @@ function Stories({
         </section>
 
         <section>
-          <div className="flex items-center gap-6 mb-12">
-            <div className="w-2 h-10 bg-indigo-500 rounded-full" />
-            <h3 className="text-4xl font-black text-heading tracking-tight">Geografia da Fé</h3>
+          <div className="flex items-center gap-4 mb-6">
+            <div className="w-1.5 h-6 bg-indigo-500 rounded-full" />
+            <h3 className="text-2xl font-black text-heading tracking-tight">Geografia da Fé</h3>
           </div>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {stories
               .filter(s => s.type === 'place')
               .sort((a, b) => a.title.localeCompare(b.title, 'pt-BR'))
-              .map(story => (
-              <div key={story.id} onClick={() => onSelectItem(story)} className="card p-0 flex flex-col sm:flex-row overflow-hidden group cursor-pointer border-none shadow-xl hover:shadow-2xl hover:-translate-y-2 transition-all relative">
-                <div className="w-full sm:w-56 bg-indigo-50 dark:bg-indigo-950/20 flex-shrink-0 flex items-center justify-center text-indigo-300 group-hover:bg-indigo-600 group-hover:text-white transition-all py-12 sm:py-0">
-                  <MapPin size={64} className="group-hover:scale-110 transition-transform" />
+              .map((story, index) => (
+              <div key={`${story.id || story.title}-${index}`} onClick={() => onSelectItem(story)} className="card p-0 flex flex-col sm:flex-row overflow-hidden group cursor-pointer border-none shadow-xl hover:shadow-2xl hover:-translate-y-2 transition-all relative">
+                <div className="w-full sm:w-40 bg-indigo-50 dark:bg-indigo-950/20 flex-shrink-0 flex items-center justify-center text-indigo-300 group-hover:bg-indigo-600 group-hover:text-white transition-all py-8 sm:py-0">
+                  <MapPin size={40} className="group-hover:scale-110 transition-transform" />
                 </div>
-                <div className="p-10 flex flex-col justify-center flex-grow pr-16 bg-slate-50/10 dark:bg-slate-900/10">
-                  <h4 className="font-black text-heading text-2xl mb-4 tracking-tight">{story.title}</h4>
-                  <p className="text-base text-muted leading-relaxed line-clamp-3 font-medium">{story.summary}</p>
+                <div className="p-5 sm:p-6 flex flex-col justify-center flex-grow pr-12 bg-slate-50/10 dark:bg-slate-900/10">
+                  <h4 className="font-black text-heading text-lg mb-2 tracking-tight">{story.title}</h4>
+                  <p className="text-xs sm:text-sm text-muted leading-relaxed line-clamp-3 font-semibold">{story.summary}</p>
                 </div>
                 {isAdmin && (
-                  <div className="absolute right-6 bottom-6 flex items-center gap-1 z-10">
+                  <div className="absolute right-4 bottom-4 flex items-center gap-1 z-10">
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
@@ -2821,17 +2940,17 @@ function Stories({
                         setNewBibleVerse(story.bibleVerse || "");
                         setIsFormOpen(true);
                       }}
-                      className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-500/10 rounded-xl transition-all"
+                      className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-500/10 rounded-xl transition-all"
                       title="Editar geografia"
                     >
-                      <Pencil size={16} />
+                      <Pencil size={14} />
                     </button>
                     <button
                       onClick={(e) => handleDeleteStory(story.id, e)}
-                      className="p-2 text-red-400 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all"
+                      className="p-1.5 text-red-400 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all"
                       title="Excluir geografia"
                     >
-                      <Trash2 size={16} />
+                      <Trash2 size={14} />
                     </button>
                   </div>
                 )}
@@ -2967,10 +3086,10 @@ function Theology({
       animate={{ opacity: 1 }}
       className="space-y-16"
     >
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="max-w-xl">
-          <h2 className="text-5xl font-black text-heading mb-6 tracking-tight">Teologia Sistemática</h2>
-          <p className="text-muted text-xl leading-relaxed font-medium">As grandes doutrinas bíblicas organizadas para proporcionar uma visão panorâmica e profunda do plano de Deus.</p>
+          <h2 className="text-3xl md:text-4xl font-black text-heading mb-2 tracking-tight">Teologia Sistemática</h2>
+          <p className="text-muted text-sm md:text-base leading-relaxed font-semibold">As grandes doutrinas bíblicas organizadas para proporcionar uma visão panorâmica e profunda do plano de Deus.</p>
         </div>
         {isAdmin && (
           <button
@@ -2983,7 +3102,7 @@ function Theology({
               }
               setIsFormOpen(!isFormOpen);
             }}
-            className="px-6 py-4 bg-accent text-secondary font-black text-xs uppercase tracking-wider rounded-2xl hover:scale-105 transition-all self-start md:self-center"
+            className="px-5 py-3.5 bg-accent text-secondary font-black text-xs uppercase tracking-wider rounded-2xl hover:scale-105 transition-all self-start md:self-center"
           >
             {isFormOpen ? "Fechar Painel" : "Adicionar Tópico"}
           </button>
@@ -3051,11 +3170,11 @@ function Theology({
       <ThemeBanner type="small" />
 
       {/* Theology modules with native ad split in between as requested: ("Teologia e cursos → Anúncios nativos entre módulos") */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
         {[...theologyTopics].sort((a, b) => a.title.localeCompare(b.title, 'pt-BR')).map((topic, i) => (
-          <div key={topic.id} onClick={() => onSelectItem(topic)} className="card group cursor-pointer border-2 border-transparent hover:border-accent flex flex-col p-6 sm:p-8 md:p-10 shadow-xl hover:-translate-y-2 transition-all relative">
-            <div className="flex justify-between items-start mb-10">
-              <span className="text-accent font-black text-xs bg-accent/10 px-4 py-2 rounded-2xl tracking-widest uppercase">Módulo 0{i + 1}</span>
+          <div key={`${topic.id || topic.title}-${i}`} onClick={() => onSelectItem(topic)} className="card group cursor-pointer border-2 border-transparent hover:border-accent flex flex-col p-5 sm:p-6 shadow-xl hover:-translate-y-2 transition-all relative">
+            <div className="flex justify-between items-start mb-5">
+              <span className="text-accent font-black text-[10px] bg-accent/10 px-3 py-1.5 rounded-xl tracking-widest uppercase">Módulo 0{i + 1}</span>
               <div className="flex items-center gap-2">
                 {isAdmin && (
                   <div className="flex items-center gap-1 animate-none">
@@ -3068,30 +3187,30 @@ function Theology({
                         setNewContent(topic.content || "");
                         setIsFormOpen(true);
                       }}
-                      className="p-2 text-slate-400 hover:text-primary hover:bg-slate-500/10 rounded-xl transition-all"
+                      className="p-1.5 text-slate-400 hover:text-primary hover:bg-slate-500/10 rounded-xl transition-all"
                       title="Editar tópico"
                     >
-                      <Pencil size={16} />
+                      <Pencil size={14} />
                     </button>
                     <button
                       onClick={(e) => handleDeleteTheology(topic.id, e)}
-                      className="p-2 text-red-400 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all"
+                      className="p-1.5 text-red-400 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all"
                       title="Excluir tópico"
                     >
-                      <Trash2 size={16} />
+                      <Trash2 size={14} />
                     </button>
                   </div>
                 )}
-                <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl group-hover:bg-accent group-hover:text-white transition-all shadow-sm">
-                  <BookOpen size={24} />
+                <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl group-hover:bg-accent group-hover:text-white transition-all shadow-sm">
+                  <BookOpen size={18} />
                 </div>
               </div>
             </div>
-            <h4 className="text-2xl font-black text-heading mb-4 group-hover:text-primary transition-colors tracking-tight leading-tight">{topic.title}</h4>
-            <p className="text-sm text-muted leading-relaxed mb-10 font-medium line-clamp-3">{topic.description}</p>
-            <div className="mt-auto pt-6 border-t border-border-light dark:border-border-dark flex items-center justify-between">
-              <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">Exposição Completa</span>
-              <ChevronRight size={18} className="text-accent group-hover:translate-x-2 transition-transform" />
+            <h4 className="text-lg font-black text-heading mb-2 group-hover:text-primary transition-colors tracking-tight leading-tight">{topic.title}</h4>
+            <p className="text-xs text-muted leading-relaxed mb-4 font-semibold line-clamp-3">{topic.description}</p>
+            <div className="mt-auto pt-3.5 border-t border-border-light dark:border-border-dark flex items-center justify-between">
+              <span className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">Exposição Completa</span>
+              <ChevronRight size={14} className="text-accent group-hover:translate-x-2 transition-transform" />
             </div>
           </div>
         ))}
@@ -3099,6 +3218,17 @@ function Theology({
     </motion.div>
   );
 }
+
+const slugify = (text: string) => {
+  return text
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-");
+};
 
 function Course({ 
   onSelectItem, 
@@ -3113,7 +3243,6 @@ function Course({
   isAdmin: boolean;
   triggerConfirm: (title: string, message: string, onConfirm: () => void) => void;
 }) {
-  const [newLessonNum, setNewLessonNum] = useState("");
   const [newTitle, setNewTitle] = useState("");
   const [newDesc, setNewDesc] = useState("");
   const [newContent, setNewContent] = useState("");
@@ -3122,17 +3251,19 @@ function Course({
 
   const handleAddLesson = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newLessonNum || !newTitle || !newDesc || !newContent) {
+    if (!newTitle || !newDesc || !newContent) {
       alert("Por favor, preencha todos os campos da lição de curso.");
       return;
     }
+
+    const lessonSlug = slugify(newTitle) || String(Date.now());
 
     if (editingLessonNum) {
       setCourseLessons(prev => prev.map(l => {
         if (l.lesson === editingLessonNum) {
           return {
             ...l,
-            lesson: newLessonNum,
+            lesson: lessonSlug,
             title: newTitle,
             description: newDesc,
             content: newContent
@@ -3141,8 +3272,8 @@ function Course({
         return l;
       }));
 
-      // If lesson number changed, delete the old row first
-      if (editingLessonNum !== newLessonNum) {
+      // If lesson identifier key changed, delete the old row first
+      if (editingLessonNum !== lessonSlug) {
         fetch(`/api/db/curso/${editingLessonNum}`, {
           method: "DELETE"
         }).catch(err => console.warn(err));
@@ -3153,12 +3284,12 @@ function Course({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          id: "lesson_" + newLessonNum,
-          lesson: newLessonNum,
+          id: "lesson_" + lessonSlug,
+          lesson: lessonSlug,
           modulo_titulo: "Curso de Teologia Básica",
           numero_modulo: 1,
           titulo_licao: newTitle,
-          numero_licao: parseInt(newLessonNum) || 1,
+          numero_licao: 1,
           description: newDesc,
           category: "Curso Teológico",
           conteudo: newContent,
@@ -3170,7 +3301,7 @@ function Course({
       alert("Lição atualizada com sucesso!");
     } else {
       const newLesson = {
-        lesson: newLessonNum,
+        lesson: lessonSlug,
         title: newTitle,
         description: newDesc,
         category: "Curso Teológico",
@@ -3183,12 +3314,12 @@ function Course({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          id: "lesson_" + newLessonNum,
-          lesson: newLessonNum,
+          id: "lesson_" + lessonSlug,
+          lesson: lessonSlug,
           modulo_titulo: "Curso de Teologia Básica",
           numero_modulo: 1,
           titulo_licao: newTitle,
-          numero_licao: parseInt(newLessonNum) || 1,
+          numero_licao: 1,
           description: newDesc,
           category: "Curso Teológico",
           conteudo: newContent,
@@ -3199,7 +3330,6 @@ function Course({
       alert("Lição adicionada ao curso com sucesso!");
     }
 
-    setNewLessonNum("");
     setNewTitle("");
     setNewDesc("");
     setNewContent("");
@@ -3210,7 +3340,7 @@ function Course({
     e.stopPropagation();
     triggerConfirm(
       "Confirmar Exclusão de Lição",
-      `Você deseja realmente deletar permanentemente a Lição ${lessonNum} do Curso?`,
+      `Você deseja realmente deletar permanentemente esta Lição do Curso?`,
       () => {
         setCourseLessons(prev => prev.filter(l => l.lesson !== lessonNum));
 
@@ -3228,7 +3358,6 @@ function Course({
 
         if (editingLessonNum === lessonNum) {
           setEditingLessonNum(null);
-          setNewLessonNum("");
           setNewTitle("");
           setNewDesc("");
           setNewContent("");
@@ -3253,7 +3382,6 @@ function Course({
             onClick={() => {
               if (isFormOpen && editingLessonNum) {
                 setEditingLessonNum(null);
-                setNewLessonNum("");
                 setNewTitle("");
                 setNewDesc("");
                 setNewContent("");
@@ -3275,22 +3403,13 @@ function Course({
           <h3 className="font-extrabold text-heading text-xl">
             {editingLessonNum ? "Editar Lição do Curso" : "Criar Lição do Curso"}
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <input
-              type="text"
-              value={newLessonNum}
-              onChange={(e) => setNewLessonNum(e.target.value)}
-              placeholder="Ex: 05, 06..."
-              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 py-3.5 px-5 rounded-2xl focus:outline-none focus:border-accent text-sm font-bold"
-            />
-            <input
-              type="text"
-              value={newTitle}
-              onChange={(e) => setNewTitle(e.target.value)}
-              placeholder="Título da lição..."
-              className="w-full md:col-span-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 py-3.5 px-5 rounded-2xl focus:outline-none focus:border-accent text-sm"
-            />
-          </div>
+          <input
+            type="text"
+            value={newTitle}
+            onChange={(e) => setNewTitle(e.target.value)}
+            placeholder="Título da lição..."
+            className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 py-3.5 px-5 rounded-2xl focus:outline-none focus:border-accent text-sm font-bold"
+          />
           <input
             type="text"
             value={newDesc}
@@ -3310,8 +3429,8 @@ function Course({
           </div>
           <div className="flex gap-3">
             <button
-              type="submit"
-              className="px-8 py-3.5 bg-primary text-white font-black text-xs uppercase tracking-widest rounded-2xl"
+               type="submit"
+               className="px-8 py-3.5 bg-primary text-white font-black text-xs uppercase tracking-widest rounded-2xl"
             >
               {editingLessonNum ? "Salvar Alterações" : "Adicionar ao Curso"}
             </button>
@@ -3320,7 +3439,6 @@ function Course({
                 type="button"
                 onClick={() => {
                   setEditingLessonNum(null);
-                  setNewLessonNum("");
                   setNewTitle("");
                   setNewDesc("");
                   setNewContent("");
@@ -3340,48 +3458,53 @@ function Course({
 
       {/* Course modules with native ad injection in list view as requested: ("Teologia e cursos → Anúncios nativos entre módulos") */}
       <div className="max-w-5xl space-y-6">
-        {courseLessons.map((lesson) => (
-          <div key={lesson.lesson} onClick={() => onSelectItem(lesson)} className="card p-8 flex items-center gap-10 group hover:border-primary transition-all cursor-pointer border-none shadow-xl hover:-translate-y-1 relative">
-            <div className="w-20 h-20 rounded-[2rem] bg-slate-50 dark:bg-slate-800 text-slate-400 group-hover:bg-primary group-hover:text-white flex items-center justify-center font-black text-2xl shrink-0 shadow-inner transition-all group-hover:rotate-6">
-              {lesson.lesson}
-            </div>
-            <div className="flex-grow pr-16 animate-none">
-              <h4 className="font-black text-heading text-2xl mb-2 group-hover:text-primary transition-colors tracking-tight">{lesson.title}</h4>
-              <p className="text-base text-muted font-medium">{lesson.description}</p>
-            </div>
-            <div className="flex items-center gap-2 shrink-0 z-10">
-              {isAdmin && (
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setEditingLessonNum(lesson.lesson);
-                      setNewLessonNum(lesson.lesson || "");
-                      setNewTitle(lesson.title || "");
-                      setNewDesc(lesson.description || "");
-                      setNewContent(lesson.content || "");
-                      setIsFormOpen(true);
-                    }}
-                    className="p-3 bg-slate-500/10 hover:bg-slate-500/20 text-slate-400 hover:text-primary rounded-xl transition-all"
-                    title="Editar lição"
-                  >
-                    <Pencil size={18} />
-                  </button>
-                  <button
-                    onClick={(e) => handleDeleteLesson(lesson.lesson, e)}
-                    className="p-3 bg-red-500/10 hover:bg-red-500/20 text-red-500 hover:text-red-400 rounded-xl transition-all"
-                    title="Excluir lição"
-                  >
-                    <Trash2 size={18} />
-                  </button>
+        {[...courseLessons]
+          .sort((a, b) => (a.title || "").localeCompare(b.title || "", 'pt-BR'))
+          .map((lesson, index) => {
+            const displayNum = String(index + 1).padStart(2, '0');
+            const enrichedLesson = { ...lesson, lesson: displayNum };
+            return (
+              <div key={`course-lesson-${lesson.lesson || lesson.title}-${index}`} onClick={() => onSelectItem(enrichedLesson)} className="card p-8 flex items-center gap-10 group hover:border-primary transition-all cursor-pointer border-none shadow-xl hover:-translate-y-1 relative">
+                <div className="w-20 h-20 rounded-[2rem] bg-slate-50 dark:bg-slate-800 text-slate-400 group-hover:bg-primary group-hover:text-white flex items-center justify-center font-black text-2xl shrink-0 shadow-inner transition-all group-hover:rotate-6">
+                  {displayNum}
                 </div>
-              )}
-              <div className="hidden sm:flex w-12 h-12 rounded-full border-2 border-slate-100 dark:border-slate-800 items-center justify-center text-slate-300 group-hover:border-primary group-hover:text-primary group-hover:bg-primary/5 transition-all">
-                <ChevronRight size={24} />
+                <div className="flex-grow pr-16 animate-none">
+                  <h4 className="font-black text-heading text-2xl mb-2 group-hover:text-primary transition-colors tracking-tight">{lesson.title}</h4>
+                  <p className="text-base text-muted font-medium">{lesson.description}</p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0 z-10">
+                  {isAdmin && (
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditingLessonNum(lesson.lesson);
+                          setNewTitle(lesson.title || "");
+                          setNewDesc(lesson.description || "");
+                          setNewContent(lesson.content || "");
+                          setIsFormOpen(true);
+                        }}
+                        className="p-3 bg-slate-500/10 hover:bg-slate-500/20 text-slate-400 hover:text-primary rounded-xl transition-all"
+                        title="Editar lição"
+                      >
+                        <Pencil size={18} />
+                      </button>
+                      <button
+                        onClick={(e) => handleDeleteLesson(lesson.lesson, e)}
+                        className="p-3 bg-red-500/10 hover:bg-red-500/20 text-red-500 hover:text-red-400 rounded-xl transition-all"
+                        title="Excluir lição"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </div>
+                  )}
+                  <div className="hidden sm:flex w-12 h-12 rounded-full border-2 border-slate-100 dark:border-slate-800 items-center justify-center text-slate-300 group-hover:border-primary group-hover:text-primary group-hover:bg-primary/5 transition-all">
+                    <ChevronRight size={24} />
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
-        ))}
+            );
+          })}
       </div>
     </motion.div>
   );
@@ -3869,6 +3992,15 @@ function AppContent({ isDark, setIsDark }: { isDark: boolean, setIsDark: (val: b
         conteudo: item.content,
         duracao_minutos: 15
       };
+    } else if (table === "comunicados" || table === "postagens") {
+      dbPayload = {
+        id: item.id,
+        titulo: item.title,
+        mensagem: item.message,
+        data_publicacao: item.date,
+        autor: item.author || "Lemos Faya de Arcanjo",
+        imagem_url: item.imageUrl || ""
+      };
     }
 
     if (!dbPayload) return;
@@ -3958,7 +4090,7 @@ function AppContent({ isDark, setIsDark }: { isDark: boolean, setIsDark: (val: b
               historias,
               teologia,
               curso,
-              comunicados,
+              postagens,
               configuracoes
             ] = await Promise.all([
               safeDirectQuery("estudos_basicos"),
@@ -3966,7 +4098,7 @@ function AppContent({ isDark, setIsDark }: { isDark: boolean, setIsDark: (val: b
               safeDirectQuery("historias_biografias"),
               safeDirectQuery("teologia_doutrinas"),
               safeDirectQuery("licoes_curso"),
-              safeDirectQuery("comunicados"),
+              safeDirectQuery("postagens"),
               safeDirectQuery("configuracoes_sociais")
             ]);
 
@@ -3976,7 +4108,7 @@ function AppContent({ isDark, setIsDark }: { isDark: boolean, setIsDark: (val: b
               historias,
               teologia,
               curso,
-              comunicados,
+              postagens,
               configuracoes
             };
             syncMethod = "DIRECT_CLIENT";
@@ -3992,7 +4124,8 @@ function AppContent({ isDark, setIsDark }: { isDark: boolean, setIsDark: (val: b
       if (resultData) {
         setDbStatus("online");
         setRetryDelay(3000); // Reseta retentativas em caso de sucesso
-        let { estudos, dicionario, historias, teologia, curso, comunicados, configuracoes } = resultData || {};
+        let { estudos, dicionario, historias, teologia, curso, postagens, comunicados, configuracoes } = resultData || {};
+        let actualPostagens = postagens || comunicados;
 
         // Garante que todas as coleções sejam arrays válidos antes de qualquer operação
         estudos = Array.isArray(estudos) ? estudos : [];
@@ -4000,7 +4133,7 @@ function AppContent({ isDark, setIsDark }: { isDark: boolean, setIsDark: (val: b
         historias = Array.isArray(historias) ? historias : [];
         teologia = Array.isArray(teologia) ? teologia : [];
         curso = Array.isArray(curso) ? curso : [];
-        comunicados = Array.isArray(comunicados) ? comunicados : [];
+        actualPostagens = Array.isArray(actualPostagens) ? actualPostagens : [];
         configuracoes = Array.isArray(configuracoes) ? configuracoes : [];
 
         const deletedIds = JSON.parse(localStorage.getItem("escola_da_fe_deleted_ids") || "[]");
@@ -4161,17 +4294,20 @@ function AppContent({ isDark, setIsDark }: { isDark: boolean, setIsDark: (val: b
               merged.push(def);
             }
           });
-          return merged.sort((a, b) => (parseInt(a.lesson) || 0) - (parseInt(b.lesson) || 0));
+          return merged.sort((a, b) => (a.title || "").localeCompare(b.title || "", 'pt-BR'));
         });
 
-        // 6. Map Comunicados (announcements)
-        const mappedComunicados = (comunicados || []).map((row: any) => ({
-          id: row.id,
-          title: row.titulo,
-          date: row.data_publicacao,
-          message: row.mensagem,
-          author: row.autor || "Lemos Faya de Arcanjo"
-        }));
+        // 6. Map Postagens (announcements)
+        const mappedComunicados = (actualPostagens || [])
+          .filter((row: any) => !deletedIds.includes(row.id))
+          .map((row: any) => ({
+            id: row.id,
+            title: row.titulo,
+            date: row.data_publicacao,
+            message: row.mensagem,
+            author: row.autor || "Lemos Faya de Arcanjo",
+            imageUrl: row.imagem_url || row.image || ""
+          }));
         setAnnouncements((prev: any[]) => {
           const merged = [...mappedComunicados];
           const defaults = [
@@ -4179,7 +4315,8 @@ function AppContent({ isDark, setIsDark }: { isDark: boolean, setIsDark: (val: b
               id: "anuncio_initial_1",
               title: "Bem-vindo à nova versão Escola da Fé",
               date: "20/05/2026",
-              message: "Agora você pode compilar ensinos, histórias e biografia em formato Word ou PDF real! Adicione itens e baixe gratuitamente para fins pastorais e de comunhão bíblica local."
+              message: "Agora você pode compilar ensinos, histórias e biografia em formato Word ou PDF real! Adicione itens e baixe gratuitamente para fins pastorais e de comunhão bíblica local.",
+              imageUrl: ""
             }
           ];
           defaults.forEach(def => {
@@ -4269,6 +4406,16 @@ function AppContent({ isDark, setIsDark }: { isDark: boolean, setIsDark: (val: b
           if (!isDefault && !deletedIds.includes(localItem.lesson)) {
             if (!curso.some((r: any) => r.lesson === localItem.lesson)) {
               pushItemToDb("curso", localItem);
+            }
+          }
+        });
+
+        // Postagens fallback push
+        announcements.forEach((localItem: any) => {
+          const isDefault = localItem.id === "anuncio_initial_1";
+          if (!isDefault && !deletedIds.includes(localItem.id)) {
+            if (!actualPostagens.some((r: any) => r.id === localItem.id)) {
+              pushItemToDb("postagens", localItem);
             }
           }
         });
@@ -4460,7 +4607,7 @@ function AppContent({ isDark, setIsDark }: { isDark: boolean, setIsDark: (val: b
     <div className="min-h-screen bg-bg-page dark:bg-bg-dark transition-colors duration-500 selection:bg-accent/30 flex flex-col justify-between">
       <div className="w-full flex-grow">
         <Navbar isDark={isDark} toggleDark={() => setIsDark(!isDark)} isAdmin={isAdmin} setIsAdmin={setIsAdmin} dbStatus={dbStatus} onSync={syncWithDatabase} supabaseConfigMissing={supabaseConfigMissing} />
-        <main className="pt-28 p-4 sm:p-8 lg:p-12 pb-28 max-w-[1920px] mx-auto">
+        <main className="pt-24 lg:pt-28 p-4 sm:p-8 lg:p-12 pb-32 lg:pb-28 max-w-[1920px] mx-auto">
           <AnimatePresence mode="wait">
             <Routes>
               <Route path="/" element={<Home onSelectItem={handleSelectItem} announcements={announcements} setAnnouncements={setAnnouncements} isAdmin={isAdmin} triggerConfirm={triggerConfirm} socialLinks={socialLinks} setSocialLinks={setSocialLinks} privacyText={privacyText} setPrivacyText={setPrivacyText} termsText={termsText} setTermsText={setTermsText} supportDetails={supportDetails} setSupportDetails={setSupportDetails} />} />
