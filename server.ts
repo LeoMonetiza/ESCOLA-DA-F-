@@ -21,6 +21,7 @@ interface FallbackData {
   curso: any[];
   postagens: any[];
   configuracoes: any[];
+  homens: any[];
 }
 
 const FALLBACK_FILE = path.join(process.cwd(), "community_fallback.json");
@@ -56,7 +57,8 @@ function getFallbackData(): FallbackData {
     teologia: [],
     curso: [],
     postagens: [],
-    configuracoes: []
+    configuracoes: [],
+    homens: []
   };
 
   try {
@@ -174,7 +176,8 @@ async function startServer() {
         posts,
         comments,
         reactions,
-        ads
+        ads,
+        homens
       ] = await Promise.all([
         safeQuery("estudos_basicos", "estudos"),
         safeQuery("dicionario_biblico", "dicionario"),
@@ -186,7 +189,8 @@ async function startServer() {
         safeQuery("posts", "posts"),
         safeQuery("comments", "comments"),
         safeQuery("reactions", "reactions"),
-        safeQuery("ads", "ads")
+        safeQuery("ads", "ads"),
+        safeQuery("homens_de_deus", "homens")
       ]);
 
       res.json({
@@ -202,7 +206,8 @@ async function startServer() {
           posts,
           comments,
           reactions,
-          ads
+          ads,
+          homens
         }
       });
     } catch (error: any) {
@@ -244,11 +249,17 @@ async function startServer() {
       const currentList = fallback[fallbackKey] || [];
       const itemToSave = { ...payload };
 
-      if (!itemToSave.id && itemToSave.termo) {
-        itemToSave.id = itemToSave.termo;
-      }
+      let fallbackKeyField = "id";
+      if (fallbackKey === "dicionario") fallbackKeyField = "termo";
+      else if (fallbackKey === "configuracoes") fallbackKeyField = "chave";
 
-      const existingIdx = currentList.findIndex((item: any) => item.id === itemToSave.id);
+      const uniqueVal = itemToSave[fallbackKeyField] || itemToSave.id;
+
+      const existingIdx = currentList.findIndex((item: any) => {
+        const itemVal = item[fallbackKeyField] || item.id;
+        return uniqueVal !== undefined && itemVal === uniqueVal;
+      });
+
       if (existingIdx !== -1) {
         currentList[existingIdx] = { ...currentList[existingIdx], ...itemToSave };
       } else {
@@ -307,7 +318,14 @@ async function startServer() {
     if (fallbackKey) {
       const fallback = getFallbackData();
       let currentList = fallback[fallbackKey] || [];
-      currentList = currentList.filter((item: any) => item.id !== id && String(item.id) !== String(id));
+      let fallbackKeyField = "id";
+      if (fallbackKey === "dicionario") fallbackKeyField = "termo";
+      else if (fallbackKey === "configuracoes") fallbackKeyField = "chave";
+
+      currentList = currentList.filter((item: any) => {
+        const itemVal = item[fallbackKeyField] || item.id;
+        return itemVal !== undefined ? (String(itemVal) !== String(id)) : (item.id !== id && String(item.id) !== String(id));
+      });
       fallback[fallbackKey] = currentList;
       saveFallbackData(fallback);
     }

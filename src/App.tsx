@@ -47,6 +47,7 @@ import Community from "./components/Community";
 import PWAController from "./components/PWAController";
 import LivretoManager from "./components/LivretoManager";
 import { getSupabaseClient, checkSupabaseConfigExists } from "./lib/supabaseClient";
+import { optimizeItemContent } from "./lib/contentOptimizer";
 import { 
   ThemeBanner, 
   NativeFeedAd, 
@@ -728,7 +729,9 @@ function StudyDetailModal({
 }) {
   if (!item) return null;
 
+  const location = useLocation();
   const [isInBooklet, setIsInBooklet] = useState(false);
+  const optimizedContent = optimizeItemContent(item, location.pathname);
 
   useEffect(() => {
     const checkState = () => {
@@ -752,7 +755,7 @@ function StudyDetailModal({
         id: item.id || item.name,
         title: item.title || item.name,
         category: item.description || item.meaning || (item.lesson ? `Lição ${item.lesson}` : "Tema de Fé"),
-        content: item.content
+        content: optimizedContent
       }
     }));
   };
@@ -805,9 +808,9 @@ function StudyDetailModal({
                 );
               })()}
 
-              {item.content ? (
+              {optimizedContent ? (
                 <div className="whitespace-pre-wrap font-normal">
-                  {item.content}
+                  {optimizedContent}
                 </div>
               ) : (
                 <p className="italic text-muted">Este conteúdo está sendo expandido para atingir a profundidade de 30+ linhas conforme solicitado. Em breve teremos a versão completa aqui.</p>
@@ -1211,6 +1214,54 @@ const SQL_SCHEMAS = {
   }
 };
 
+// Helper to check and parse biography announcements shared from Homens de Deus
+function parseBiographyAnnouncement(a: any) {
+  if (!a || !a.message) return null;
+  const hasLegacy = a.message.includes("Legado Principal:") || a.message.match(/Legado\s+Principal:/i);
+  const isBioShare = hasLegacy || (a.id && String(a.id).startsWith("anuncio_") && (a.title.includes("📢 COMUNICADO") || a.title.includes("📖 PUBLICAÇÃO")));
+
+  if (!isBioShare) return null;
+
+  // Extract Name from Title (e.g. "📢 COMUNICADO: John Wesley")
+  let name = a.title || "";
+  if (name.includes(": ")) {
+    name = name.split(": ").slice(1).join(": ");
+  }
+
+  // Extract Legado Principal
+  let legacy = "Servo de Deus";
+  const legacyMatch = a.message.match(/Legado\s+Principal:\s*([^\n]+)/i);
+  if (legacyMatch) {
+    legacy = legacyMatch[1].trim();
+  }
+
+  // Extract full biography text (story) - everything after Legado Principal value
+  let story = a.message;
+  const legacyIndex = a.message.toLowerCase().indexOf("legado principal:");
+  if (legacyIndex !== -1) {
+    const afterLegacy = a.message.substring(legacyIndex);
+    const parts = afterLegacy.split("\n\n");
+    if (parts.length > 1) {
+      story = parts.slice(1).join("\n\n").trim();
+    } else {
+      const lineParts = afterLegacy.split("\n");
+      if (lineParts.length > 1) {
+        story = lineParts.slice(1).join("\n").trim();
+      }
+    }
+  } else {
+    // If no explicit Legacy match, clean up description prefix
+    story = a.message.replace(/^(Partilhamos este importante comunicado sobre a vida de|Nova publicação de estudo biográfico de)[^\n]+(\r?\n)*/i, "").trim();
+  }
+
+  return {
+    name,
+    legacy,
+    story,
+    photoUrl: a.imageUrl || a.imagem_url || ""
+  };
+}
+
 function Home({ 
   onSelectItem, 
   announcements, 
@@ -1245,6 +1296,9 @@ function Home({
   const [newImageUrl, setNewImageUrl] = useState("");
   const [newType, setNewType] = useState("notification"); // "notification" | "publication" | "alert" | "teaching"
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [expandedNoticeIds, setExpandedNoticeIds] = useState<string[]>([]);
+  const [activeBioModal, setActiveBioModal] = useState<any | null>(null);
 
   const [activeSqlTab, setActiveSqlTab] = useState<"postgres" | "sqlite">("postgres");
   const [activeSqlTable, setActiveSqlTable] = useState<"usuarios" | "postagens" | "redes" | "progresso" | "estudos" | "dicionario" | "teologia" | "curso" | "apoio" | "homens">("usuarios");
@@ -1266,36 +1320,73 @@ function Home({
       alert("Por favor, preencha todos os campos da publicação/notificação.");
       return;
     }
-    const newNotice = {
-      id: "anuncio_" + Date.now(),
-      title: newTitle,
-      date: new Date().toLocaleDateString("pt-BR"),
-      type: newType,
-      message: newMessage,
-      imageUrl: newImageUrl
-    };
-    setAnnouncements(prev => [newNotice, ...prev]);
 
-    // Push right away to database
-    fetch("/api/db/postagens/add", {
-      method: "POST",
-      headers: { "Content-Type" : "application/json" },
-      body: JSON.stringify({
-        id: newNotice.id,
-        titulo: newNotice.title,
-        data_publicacao: newNotice.date,
-        mensagem: newNotice.message,
-        autor: "Lemos Faya de Arcanjo",
-        imagem_url: newNotice.imageUrl
-      })
-    }).catch(err => console.warn("Erro ao salvar postagem via API imediatamente:", err));
+    if (editingId) {
+      setAnnouncements(prev => prev.map(a => {
+        if (a.id === editingId) {
+          return {
+            ...a,
+            title: newTitle,
+            message: newMessage,
+            imageUrl: newImageUrl,
+            type: newType
+          };
+        }
+        return a;
+      }));
 
-    setNewTitle("");
-    setNewMessage("");
-    setNewImageUrl("");
-    setNewType("notification");
-    setIsFormOpen(false);
-    alert("Publicada com sucesso no mural de postagens!");
+      fetch("/api/db/postagens/add", {
+        method: "POST",
+        headers: { "Content-Type" : "application/json" },
+        body: JSON.stringify({
+          id: editingId,
+          titulo: newTitle,
+          data_publicacao: new Date().toLocaleDateString("pt-BR"),
+          mensagem: newMessage,
+          autor: "Lemos Faya de Arcanjo",
+          imagem_url: newImageUrl
+        })
+      }).catch(err => console.warn("Erro ao salvar postagem via API imediatamente:", err));
+
+      setEditingId(null);
+      setNewTitle("");
+      setNewMessage("");
+      setNewImageUrl("");
+      setNewType("notification");
+      setIsFormOpen(false);
+      alert("Postagem atualizada com sucesso!");
+    } else {
+      const newNotice = {
+        id: "anuncio_" + Date.now(),
+        title: newTitle,
+        date: new Date().toLocaleDateString("pt-BR"),
+        type: newType,
+        message: newMessage,
+        imageUrl: newImageUrl
+      };
+      setAnnouncements(prev => [newNotice, ...prev]);
+
+      // Push right away to database
+      fetch("/api/db/postagens/add", {
+        method: "POST",
+        headers: { "Content-Type" : "application/json" },
+        body: JSON.stringify({
+          id: newNotice.id,
+          titulo: newNotice.title,
+          data_publicacao: newNotice.date,
+          mensagem: newNotice.message,
+          autor: "Lemos Faya de Arcanjo",
+          imagem_url: newNotice.imageUrl
+        })
+      }).catch(err => console.warn("Erro ao salvar postagem via API imediatamente:", err));
+
+      setNewTitle("");
+      setNewMessage("");
+      setNewImageUrl("");
+      setNewType("notification");
+      setIsFormOpen(false);
+      alert("Publicada com sucesso no mural de postagens!");
+    }
   };
 
   const handleDeleteAnnouncement = (id: string) => {
@@ -1371,10 +1462,20 @@ function Home({
           </div>
           {isAdmin && (
             <button
-              onClick={() => setIsFormOpen(!isFormOpen)}
+              onClick={() => {
+                if (editingId) {
+                  setEditingId(null);
+                  setNewTitle("");
+                  setNewMessage("");
+                  setNewImageUrl("");
+                  setNewType("notification");
+                } else {
+                  setIsFormOpen(!isFormOpen);
+                }
+              }}
               className="px-6 py-3 bg-[#cfaf72] text-secondary font-black text-xs uppercase tracking-wider rounded-xl hover:bg-white transition-all flex items-center gap-2"
             >
-              {isFormOpen ? "Fechar Painel" : "Adicionar Postagem"}
+              {isFormOpen ? "Fechar Painel" : (editingId ? "Cancelar Edição" : "Adicionar Postagem")}
             </button>
           )}
         </div>
@@ -1382,7 +1483,7 @@ function Home({
         {isFormOpen && isAdmin && (
           <form onSubmit={handleAddAnnouncement} className="mb-8 p-6 bg-white dark:bg-slate-900 rounded-3xl border-2 border-[#cfaf72]/30 space-y-4 shadow-xl">
             <h4 className="font-black text-heading text-lg flex items-center gap-2 text-[#cfaf72]">
-              <span>📢</span> Criar Nova Postagem ou Notificação (Painel Admin)
+              <span>📢</span> {editingId ? "Editar Postagem Existente" : "Criar Nova Postagem ou Notificação"} (Painel Admin)
             </h4>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="md:col-span-2">
@@ -1432,12 +1533,30 @@ function Home({
               />
             </div>
 
-            <button
-              type="submit"
-              className="px-6 py-3.5 bg-secondary hover:bg-primary text-white font-black text-xs uppercase tracking-wider rounded-xl transition-all shadow-md active:scale-95"
-            >
-              Publicar no Mural
-            </button>
+            <div className="flex gap-3">
+              <button
+                type="submit"
+                className="px-6 py-3.5 bg-secondary hover:bg-primary text-white font-black text-xs uppercase tracking-wider rounded-xl transition-all shadow-md active:scale-95"
+              >
+                {editingId ? "Salvar Alterações" : "Publicar no Mural"}
+              </button>
+              {editingId && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingId(null);
+                    setNewTitle("");
+                    setNewMessage("");
+                    setNewImageUrl("");
+                    setNewType("notification");
+                    setIsFormOpen(false);
+                  }}
+                  className="px-6 py-3.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-black text-xs uppercase tracking-wider rounded-xl transition-all hover:bg-slate-200 shadow-md"
+                >
+                  Cancelar
+                </button>
+              )}
+            </div>
           </form>
         )}
 
@@ -1446,6 +1565,83 @@ function Home({
             <p className="text-slate-400 dark:text-slate-500 font-medium text-sm">Nenhum aviso no mural de avisos da Escola.</p>
           ) : (
             announcements.map((a: any, idx: number) => {
+              const bioData = parseBiographyAnnouncement(a);
+              
+              if (bioData) {
+                return (
+                  <div key={a.id || `announcement-bio-${idx}`} className="relative p-6 bg-card-light dark:bg-card-dark rounded-2xl border border-border-light dark:border-border-dark flex flex-col justify-between shadow-xl group hover:border-[#cfaf72]/20 transition-all overflow-hidden">
+                    <div>
+                      <div className="flex items-center justify-between gap-4 mb-3">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] text-slate-400 font-black tracking-wider uppercase font-mono">{a.date}</span>
+                          <span className="text-[8px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-amber-100 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400">
+                            {a.title.includes("📅 COMUNICADO") ? "📢 Biografia: Comunicado" : "📖 Biografia: Estudo"}
+                          </span>
+                        </div>
+                        {isAdmin && (
+                          <div className="flex items-center gap-1 shrink-0 z-10">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditingId(a.id);
+                                setNewTitle(a.title || "");
+                                setNewMessage(a.message || "");
+                                setNewImageUrl(a.imageUrl || "");
+                                setNewType(a.type || "notification");
+                                setIsFormOpen(true);
+                                window.scrollTo({ top: (document.getElementById("navbar")?.offsetHeight || 0) + 120, behavior: "smooth" });
+                              }}
+                              className="w-11 h-11 flex items-center justify-center text-slate-400 hover:text-primary hover:bg-slate-500/10 rounded-xl transition-all"
+                              title="Editar postagem"
+                            >
+                              <Pencil size={18} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteAnnouncement(a.id)}
+                              className="w-11 h-11 flex items-center justify-center text-red-400 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all"
+                              title="Excluir postagem"
+                            >
+                              <Trash2 size={18} />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* 1. Foto with click to open */}
+                      {bioData.photoUrl && (
+                        <div className="relative w-full h-56 overflow-hidden rounded-xl mb-4 bg-slate-100 dark:bg-slate-800/80 border border-slate-200/50 dark:border-slate-700/50 group relative font-sans">
+                          <img 
+                            src={bioData.photoUrl} 
+                            alt={bioData.name} 
+                            referrerPolicy="no-referrer"
+                            className="w-full h-full object-cover cursor-pointer hover:scale-103 transition-all duration-300 rounded-xl"
+                            onClick={() => setActiveBioModal(bioData)}
+                            title="Clique para ler a biografia completa"
+                          />
+                          <div 
+                            onClick={() => setActiveBioModal(bioData)}
+                            className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer rounded-xl"
+                          >
+                            <span className="text-white text-xs font-black uppercase tracking-wider px-3 py-1.5 bg-accent/95 rounded-full flex items-center gap-1.5 shadow-lg max-w-[90%] text-center">
+                              <BookOpen size={14} /> Ler Biografia Completa
+                            </span>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* 2. Nome */}
+                      <h4 className="font-extrabold text-heading text-xl mb-1">{bioData.name}</h4>
+
+                      {/* 3. Legado Principal */}
+                      <p className="text-xs text-accent font-black uppercase tracking-widest bg-accent/10 px-2.5 py-1 rounded-md inline-block mb-2">
+                        {bioData.legacy}
+                      </p>
+                    </div>
+                  </div>
+                );
+              }
+
               // Custom colors based on Type of announcement
               let badgeColor = "bg-blue-100 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400";
               let badgeLabel = "📢 Notificação";
@@ -1472,18 +1668,38 @@ function Home({
                         </span>
                       </div>
                       {isAdmin && (
-                        <button
-                          onClick={() => handleDeleteAnnouncement(a.id)}
-                          className="p-1.5 text-red-400 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all opacity-0 group-hover:opacity-100"
-                          title="Excluir aviso"
-                        >
-                          <Trash2 size={14} />
-                        </button>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingId(a.id);
+                              setNewTitle(a.title || "");
+                              setNewMessage(a.message || "");
+                              setNewImageUrl(a.imageUrl || "");
+                              setNewType(a.type || "notification");
+                              setIsFormOpen(true);
+                              // Scroll into view gently so user is taken directly to the editor
+                              window.scrollTo({ top: (document.getElementById("navbar")?.offsetHeight || 0) + 120, behavior: "smooth" });
+                            }}
+                            className="w-11 h-11 flex items-center justify-center text-slate-400 hover:text-primary hover:bg-slate-500/10 rounded-xl transition-all"
+                            title="Editar postagem"
+                          >
+                            <Pencil size={18} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteAnnouncement(a.id)}
+                            className="w-11 h-11 flex items-center justify-center text-red-400 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all"
+                            title="Excluir postagem"
+                          >
+                            <Trash2 size={18} />
+                          </button>
+                        </div>
                       )}
                     </div>
                     <h4 className="font-extrabold text-heading text-lg mb-2">{a.title}</h4>
                     {a.imageUrl && (
-                      <div className="w-full h-48 overflow-hidden rounded-xl mb-4 bg-slate-100 dark:bg-slate-800/80 border border-slate-200/50 dark:border-slate-700/50 relative">
+                      <div className="w-full h-48 overflow-hidden rounded-xl mb-4 bg-slate-100 dark:bg-slate-800/80 border border-slate-200/50 dark:border-slate-700/50 relative font-sans">
                         <img 
                           src={a.imageUrl} 
                           alt={a.title} 
@@ -1492,7 +1708,35 @@ function Home({
                         />
                       </div>
                     )}
-                    <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed font-semibold block whitespace-pre-wrap">{a.message}</p>
+                    {(() => {
+                      const isLong = a.message && a.message.length > 220;
+                      const isExpanded = expandedNoticeIds.includes(a.id);
+                      const displayText = isLong && !isExpanded 
+                        ? a.message.substring(0, 220) + "..." 
+                        : a.message;
+                      return (
+                        <div className="mt-2">
+                          <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed font-semibold block whitespace-pre-wrap">
+                            {displayText}
+                          </p>
+                          {isLong && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setExpandedNoticeIds(prev => 
+                                  prev.includes(a.id) 
+                                    ? prev.filter(id => id !== a.id) 
+                                    : [...prev, a.id]
+                                );
+                              }}
+                              className="mt-3 text-xs font-black uppercase tracking-wider text-accent hover:text-[#d4b375] transition-colors focus:outline-none flex items-center gap-1 cursor-pointer bg-accent/15 hover:bg-accent/25 px-2.5 py-1 rounded-md"
+                            >
+                              {isExpanded ? "Ver menos" : "Ver mais"}
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
               );
@@ -2019,6 +2263,111 @@ function Home({
           </div>
         </div>
       </div>
+
+      {/* Biography Modal overlay for mural posts */}
+      <AnimatePresence>
+        {activeBioModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[140] bg-black/90 backdrop-blur-md flex items-center justify-center p-4 md:p-6"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                setActiveBioModal(null);
+              }
+            }}
+          >
+            <motion.div
+              initial={{ scale: 0.98, y: 10, opacity: 0 }}
+              animate={{ scale: 1, y: 0, opacity: 1 }}
+              exit={{ scale: 0.98, y: 10, opacity: 0 }}
+              transition={{ type: "spring", duration: 0.4 }}
+              className="relative w-full max-w-4xl max-h-[90vh] bg-slate-950 rounded-[2rem] border border-slate-800 shadow-2xl flex flex-col overflow-hidden text-white"
+            >
+              {/* Header */}
+              <div className="absolute top-4 right-4 z-50">
+                <button
+                  onClick={() => setActiveBioModal(null)}
+                  className="p-3 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-full transition-all cursor-pointer"
+                  title="Fechar"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Scrollable Container */}
+              <div className="flex-1 overflow-y-auto custom-scrollbar p-6 sm:p-10 bg-slate-950">
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-start">
+                  
+                  {/* Photo Column */}
+                  {activeBioModal.photoUrl && (
+                    <div className="col-span-1 md:col-span-5 flex flex-col items-center">
+                      <div className="w-full aspect-[4/5] rounded-3xl overflow-hidden border border-[#cfaf72]/30 shadow-xl relative bg-slate-900">
+                        <img
+                          src={activeBioModal.photoUrl}
+                          alt={activeBioModal.name}
+                          className="w-full h-full object-cover animate-none"
+                          referrerPolicy="no-referrer"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Text Column */}
+                  <div className={cn("col-span-1", activeBioModal.photoUrl ? "md:col-span-7" : "md:col-span-12", "space-y-6 pt-2")}>
+                    <div>
+                      <div className="flex items-center gap-2 mb-2 flex-wrap">
+                        <span className="text-[9px] text-[#cfaf72] font-black uppercase tracking-widest bg-[#cfaf72]/10 px-2.5 py-0.5 rounded-full leading-none">
+                          ESTUDO BIOGRÁFICO
+                        </span>
+                      </div>
+                      <h2 className="text-3xl sm:text-4xl font-black text-white tracking-tight leading-none">
+                        {activeBioModal.name}
+                      </h2>
+                    </div>
+
+                    {/* Legacy Indicator */}
+                    <div className="p-4 bg-slate-900 border border-slate-800 rounded-2xl">
+                      <h4 className="text-[10px] font-black text-[#cfaf72] uppercase tracking-wider mb-1">
+                        Legado Principal
+                      </h4>
+                      <p className="text-sm font-semibold text-slate-200">
+                        {activeBioModal.legacy}
+                      </p>
+                    </div>
+
+                    {/* Full Biography Story */}
+                    <div className="space-y-4 font-sans">
+                      <h4 className="text-[10px] font-black text-[#cfaf72] uppercase tracking-wider">
+                        Biografia & Impacto Espiritual
+                      </h4>
+                      <div className="p-6 bg-slate-900 rounded-2xl border border-slate-800 shadow-inner">
+                        <p className="text-sm sm:text-base text-white leading-relaxed font-semibold whitespace-pre-wrap">
+                          {activeBioModal.story}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+
+              {/* Sticky Footer */}
+              <div className="p-4 sm:p-6 bg-slate-900 border-t border-slate-800 flex justify-end gap-3 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setActiveBioModal(null)}
+                  className="h-11 px-6 bg-slate-800 hover:bg-slate-700 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl transition-all active:scale-95 cursor-pointer border border-slate-700/50"
+                >
+                  Fechar Biografia
+                </button>
+              </div>
+
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }
@@ -2288,17 +2637,17 @@ function Studies({
                         setNewBibleVerse(theme.bibleVerse || "");
                         setIsFormOpen(true);
                       }}
-                      className="p-1.5 text-slate-400 hover:text-primary hover:bg-slate-500/10 rounded-xl transition-all"
+                      className="w-11 h-11 flex items-center justify-center text-slate-400 hover:text-primary hover:bg-slate-500/10 rounded-xl transition-all"
                       title="Editar estudo"
                     >
-                      <Pencil size={14} />
+                      <Pencil size={18} />
                     </button>
                     <button
                       onClick={(e) => handleDeleteTheme(theme.id, e)}
-                      className="p-1.5 text-red-400 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all"
+                      className="w-11 h-11 flex items-center justify-center text-red-400 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all"
                       title="Excluir estudo"
                     >
-                      <Trash2 size={14} />
+                      <Trash2 size={18} />
                     </button>
                   </div>
                 )}
@@ -2602,17 +2951,17 @@ function Dictionary({
                     setNewContent(item.content || "");
                     setIsFormOpen(true);
                   }}
-                  className="p-2 text-slate-400 hover:text-primary hover:bg-slate-500/10 rounded-xl transition-all"
+                  className="w-11 h-11 flex items-center justify-center text-slate-400 hover:text-primary hover:bg-slate-500/10 rounded-xl transition-all"
                   title="Editar nome"
                 >
-                  <Pencil size={16} />
+                  <Pencil size={18} />
                 </button>
                 <button
                   onClick={(e) => handleDeleteName(item.name, e)}
-                  className="p-2 text-red-400 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all"
+                  className="w-11 h-11 flex items-center justify-center text-red-400 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all"
                   title="Excluir nome"
                 >
-                  <Trash2 size={16} />
+                  <Trash2 size={18} />
                 </button>
               </div>
             )}
@@ -2890,17 +3239,17 @@ function Stories({
                         setNewBibleVerse(story.bibleVerse || "");
                         setIsFormOpen(true);
                        }}
-                      className="p-1.5 text-slate-400 hover:text-primary hover:bg-slate-500/10 rounded-xl transition-all"
+                      className="w-11 h-11 flex items-center justify-center text-slate-400 hover:text-primary hover:bg-slate-500/10 rounded-xl transition-all"
                       title="Editar biografia"
                     >
-                      <Pencil size={14} />
+                      <Pencil size={18} />
                     </button>
                     <button
                       onClick={(e) => handleDeleteStory(story.id, e)}
-                      className="p-1.5 text-red-400 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all"
+                      className="w-11 h-11 flex items-center justify-center text-red-400 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all"
                       title="Excluir biografia"
                     >
-                      <Trash2 size={14} />
+                      <Trash2 size={18} />
                     </button>
                   </div>
                 )}
@@ -2940,17 +3289,17 @@ function Stories({
                         setNewBibleVerse(story.bibleVerse || "");
                         setIsFormOpen(true);
                       }}
-                      className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-500/10 rounded-xl transition-all"
+                      className="w-11 h-11 flex items-center justify-center text-slate-400 hover:text-indigo-650 hover:bg-indigo-500/10 rounded-xl transition-all"
                       title="Editar geografia"
                     >
-                      <Pencil size={14} />
+                      <Pencil size={18} />
                     </button>
                     <button
                       onClick={(e) => handleDeleteStory(story.id, e)}
-                      className="p-1.5 text-red-400 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all"
+                      className="w-11 h-11 flex items-center justify-center text-red-400 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all"
                       title="Excluir geografia"
                     >
-                      <Trash2 size={14} />
+                      <Trash2 size={18} />
                     </button>
                   </div>
                 )}
@@ -3187,17 +3536,17 @@ function Theology({
                         setNewContent(topic.content || "");
                         setIsFormOpen(true);
                       }}
-                      className="p-1.5 text-slate-400 hover:text-primary hover:bg-slate-500/10 rounded-xl transition-all"
+                      className="w-11 h-11 flex items-center justify-center text-slate-400 hover:text-primary hover:bg-slate-500/10 rounded-xl transition-all"
                       title="Editar tópico"
                     >
-                      <Pencil size={14} />
+                      <Pencil size={18} />
                     </button>
                     <button
                       onClick={(e) => handleDeleteTheology(topic.id, e)}
-                      className="p-1.5 text-red-400 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all"
+                      className="w-11 h-11 flex items-center justify-center text-red-400 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all"
                       title="Excluir tópico"
                     >
-                      <Trash2 size={14} />
+                      <Trash2 size={18} />
                     </button>
                   </div>
                 )}
@@ -3484,14 +3833,14 @@ function Course({
                           setNewContent(lesson.content || "");
                           setIsFormOpen(true);
                         }}
-                        className="p-3 bg-slate-500/10 hover:bg-slate-500/20 text-slate-400 hover:text-primary rounded-xl transition-all"
+                        className="w-11 h-11 flex items-center justify-center bg-slate-500/10 hover:bg-slate-500/20 text-slate-400 hover:text-primary rounded-xl transition-all"
                         title="Editar lição"
                       >
                         <Pencil size={18} />
                       </button>
                       <button
                         onClick={(e) => handleDeleteLesson(lesson.lesson, e)}
-                        className="p-3 bg-red-500/10 hover:bg-red-500/20 text-red-500 hover:text-red-400 rounded-xl transition-all"
+                        className="w-11 h-11 flex items-center justify-center bg-red-500/10 hover:bg-red-500/20 text-red-500 hover:text-red-400 rounded-xl transition-all"
                         title="Excluir lição"
                       >
                         <Trash2 size={18} />
@@ -3847,6 +4196,20 @@ function AppContent({ isDark, setIsDark }: { isDark: boolean, setIsDark: (val: b
     localStorage.setItem("admin_logged", isAdmin ? "true" : "false");
     window.dispatchEvent(new CustomEvent("admin-state-changed", { detail: isAdmin }));
   }, [isAdmin]);
+
+  useEffect(() => {
+    const handleLoginUpdate = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      if (customEvent.detail !== undefined) {
+        setIsAdmin(customEvent.detail);
+      } else {
+        const logged = localStorage.getItem("admin_logged") === "true";
+        setIsAdmin(logged);
+      }
+    };
+    window.addEventListener("sync-admin-status", handleLoginUpdate);
+    return () => window.removeEventListener("sync-admin-status", handleLoginUpdate);
+  }, []);
 
   // Persistent user content lists
   const [themes, setThemes] = useState<any[]>(() => {
@@ -4446,8 +4809,14 @@ function AppContent({ isDark, setIsDark }: { isDark: boolean, setIsDark: (val: b
     }, 60000);
 
     window.addEventListener("online", handleOnline);
+    const handleRefreshPostagens = () => {
+      console.log("[Supabase Sync] Recebido evento refresh-announcements. Atualizando banco...");
+      syncWithDatabase();
+    };
+    window.addEventListener("refresh-announcements", handleRefreshPostagens);
     return () => {
       window.removeEventListener("online", handleOnline);
+      window.removeEventListener("refresh-announcements", handleRefreshPostagens);
       clearInterval(intervalId);
     };
   }, []);

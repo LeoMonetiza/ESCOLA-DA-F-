@@ -22,7 +22,11 @@ import {
   Check,
   MessageCircle,
   Send,
-  AlertCircle
+  AlertCircle,
+  Eye,
+  EyeOff,
+  Megaphone,
+  Newspaper
 } from "lucide-react";
 import { cn } from "@/src/lib/utils";
 import { ThemeBanner } from "./SimulatedAds";
@@ -36,69 +40,9 @@ export interface HomemDeDeus {
   era: string;      // e.g. "Reforma", "Século XIX"
   story: string;    // Story text (supports paragraphs)
   birthAndDeath: string; // e.g. "1834 - 1892"
-  mainLegacy: string; // e.g. "O Príncipe dos Pregadores"
+  mainLegacy: string; 
   bibleVerse?: string; // Optional biblical text reference
 }
-
-// --- Initial Data for Premium Look & Feel ---
-const INITIAL_HOMENS: HomemDeDeus[] = [
-  {
-    id: "spurgeon",
-    name: "Charles Haddon Spurgeon",
-    photoUrl: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=300",
-    era: "Século XIX",
-    birthAndDeath: "1834 – 1892",
-    mainLegacy: "O Príncipe dos Pregadores",
-    story: `Charles Haddon Spurgeon foi um lendário pregador batista reformado britânico, reverenciado até hoje como o "Príncipe dos Pregadores". Ele pretejou seu primeiro sermão aos 16 anos e foi nomeado pastor aos 17 da Capela de Waterbeach. Posteriormente, mudou-se para Londres, onde pastoreou o Tabernáculo Metropolitano durante 38 anos, atraindo audiências de mais de 10.000 pessoas semanalmente sem amplificação moderna.
-
-Sua paixão ardia pelo Evangelho genuíno, o calvinismo moderado e o fervor evangelístico. Spurgeon fundou um colégio para pastores (Spurgeon's College), orfanatos literários e dedicou-se incansavelmente à caridade social em Londres.
-
-Ele escreveu dezenas de livros clássicos, comentários de Salmos ("O Tesouro de Davi") e coletâneas de sermões mensais extremamente ricos em doutrina, devoção cristã e graça. Faleceu em Menton, França, deixando um legado inabalável que continua alimentando mentes teológicas no mundo inteiro.`,
-    bibleVerse: "2 Timóteo 4:2 — Prega a palavra, insta, quer seja oportuno, quer não, corrige, repreende, exorta com toda a longanimidade e doutrina."
-  },
-  {
-    id: "billy_graham",
-    name: "William Franklin Billy Graham",
-    photoUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=300",
-    era: "Século XX",
-    birthAndDeath: "1918 – 2018",
-    mainLegacy: "O Evangelista das Nações",
-    story: `William Franklin Graham Jr., mundialmente conhecido por Billy Graham, foi um evangelista e pastor batista americano cujo ministério alcançou centenas de milhões de lares. Ele promoveu históricas campanhas de evangelização chamadas de "Cruzadas", pregando pessoalmente a mais de 200 milhões de almas em quase todos os continentes do globo terrestre.
-
-Durante décadas, Graham atuou como conselheiro espiritual de diversos presidentes dos Estados Unidos e liderou redes mundiais de rádio, televisão e literatura evangelística fundamentadas no clamor clássico: "A Bíblia diz...".
-
-Sua conduta moral ilibada, a recusa de manipulações financeiras (através das Sábias Diretrizes de Modesto da Associação Billy Graham) e seu coração voltado à ecumenia e integração racial durante os difíceis tempos de repressão americana unificaram a sua fama como a maior voz de despertamento de massas no século vinte.`,
-    bibleVerse: "2 Timóteo 4:5 — Tu, porém, sê sóbrio em tudo, sofre as afflições, faze a obra de um evangelista, cumpre o teu ministério."
-  },
-  {
-    id: "lutero",
-    name: "Martinho Lutero",
-    photoUrl: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=300",
-    era: "Reforma Protestante (Século XVI)",
-    birthAndDeath: "1483 – 1546",
-    mainLegacy: "Pai do Protestantismo e Reformador",
-    story: `Martinho Lutero foi um proeminente monge agostiniano e professor de teologia alemão que se tornou a figura central da Reforma Protestante do Século XVI. Ele questionou profundamente as vendas de indulgências promovidas pela Igreja Romana na época. Em 31 de outubro de 1517, fixou suas célebres 95 Teses na porta da Igreja do Castelo de Wittenberg, desencadeando a maior revolução teológica da história cristã.
-
-Suas bases assentavam-se nas Cinco Solas da foi cristã reformada: Sola Fide (Somente a fé), Sola Scriptura (Somente as Escrituras), Sola Gratia (Somente a graça), Solus Christus (Somente Cristo) e Soli Deo Gloria (Glória somente a Deus).
-
-Lutero traduziu a Bíblia diretamente do grego e hebraico para o idioma alemão vernacular da época, permitindo que as pessoas comuns tivessem livre acesso à Palavra de Deus. Ele também compôs hinos inspiradores de combate ao mal, incluindo o imortal "Castelo Forte é o nosso Deus".`,
-    bibleVerse: "Romanos 1:17 — Visto que a justiça de Deus se revela no evangelho, de fé em fé, como está escrito: O justo viverá de fé."
-  },
-  {
-    id: "john_wesley",
-    name: "John Wesley",
-    photoUrl: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=300",
-    era: "Século XVIII",
-    birthAndDeath: "1703 – 1791",
-    mainLegacy: "Líder do Avivamento Metodista",
-    story: `John Wesley foi um clérigo anglicano e teólogo britânico que liderou o avivamento evangélico do século XVIII ao lado de seu irmão Charles Wesley e do ardente amigo George Whitefield. Depois de sentir seu coração ser estranhamente aquecido em uma reunião na rua Aldersgate em Londres (1738), dedicou a vida a pregar ao ar livre para as massas operárias que não frequentavam igrejas.
-
-Wesley percorreu milhares de quilômetros a cavalo pregando incansavelmente, promovendo a santidade prática, a doutrina do livre-arbítrio responsável (Arminianismo) e a ação social em prol de prisões e orfanatos.
-
-Sua organização em pequenas reuniões semanais de discípulos chamados de "sociedades e classes" originou a Igreja Metodista e modelou os movimentos modernos de discipulado e avivamento que resgatou o fervor comunitário da Inglaterra.`,
-    bibleVerse: "Gálatas 5:6 — Porque, em Jesus Cristo, nem a circuncisão nem a incircuncisão têm valor algum, mas sim a fé que opera pelo amor."
-  }
-];
 
 export function getBibleVerseForMan(man: HomemDeDeus): { reference: string; text: string } {
   const nameLower = (man?.name || "").toLowerCase();
@@ -158,6 +102,20 @@ export function getBibleVerseForMan(man: HomemDeDeus): { reference: string; text
   };
 }
 
+const EXCLUDED_IDS = ["spurgeon", "billy_graham", "lutero", "john_wesley"];
+
+export const isMockedItem = (item: HomemDeDeus) => {
+  if (!item) return true;
+  const idLower = (item.id || "").toLowerCase();
+  const nameLower = (item.name || "").toLowerCase();
+  if (EXCLUDED_IDS.includes(idLower)) return true;
+  if (nameLower.includes("spurgeon")) return true;
+  if (nameLower.includes("billy graham") || nameLower.includes("billy_graham")) return true;
+  if (nameLower.includes("lutero") || nameLower.includes("luther")) return true;
+  if (nameLower.includes("wesley")) return true;
+  return false;
+};
+
 export default function HomensDeDeusView({ 
   isAdmin: propIsAdmin,
   triggerConfirm
@@ -165,7 +123,7 @@ export default function HomensDeDeusView({
   isAdmin?: boolean;
   triggerConfirm?: (title: string, message: string, onConfirm: () => void) => void;
 }) {
-  const [items, setItems] = useState<HomemDeDeus[]>(INITIAL_HOMENS);
+  const [items, setItems] = useState<HomemDeDeus[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -174,6 +132,14 @@ export default function HomensDeDeusView({
   const [selectedMan, setSelectedMan] = useState<HomemDeDeus | null>(null);
 
   const [isInBooklet, setIsInBooklet] = useState(false);
+  const [hiddenIds, setHiddenIds] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem("escola_da_fe_hidden_men_ids");
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
 
   // Device ID for tracking offline reactions & commenting
   const [deviceId, setDeviceId] = useState<string>(() => {
@@ -442,6 +408,68 @@ export default function HomensDeDeusView({
     );
   };
 
+  const handleToggleHide = async (id: string) => {
+    let nextHidden: string[] = [];
+    setHiddenIds(prev => {
+      const next = prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id];
+      nextHidden = next;
+      localStorage.setItem("escola_da_fe_hidden_men_ids", JSON.stringify(next));
+      return next;
+    });
+
+    // Check pre-update status to show exact prompt
+    const wasHidden = hiddenIds.includes(id);
+    showToast(wasHidden ? "Biografia agora está visível para todos!" : "Biografia ocultada de alunos!");
+
+    try {
+      await performResilientDbWrite("configuracoes", "POST", {
+        chave: "hidden_men_ids",
+        valor: JSON.stringify(nextHidden)
+      });
+    } catch (err) {
+      console.warn("Falha ao salvar no banco remoto de configuracoes:", err);
+    }
+  };
+
+  const handleShareAsAnnouncementOrPublication = async (man: HomemDeDeus, type: "comunicado" | "publicacao") => {
+    const isAnnouncement = type === "comunicado";
+    const prefix = isAnnouncement ? "📢 COMUNICADO" : "📖 PUBLICAÇÃO";
+    const descPrefix = isAnnouncement 
+      ? `Partilhamos este importante comunicado sobre a vida de ${man.name} (${man.birthAndDeath}).`
+      : `Nova publicação de estudo biográfico de ${man.name} (${man.birthAndDeath}).`;
+
+    const newPostId = "anuncio_" + Date.now();
+    const dateStr = new Date().toLocaleDateString("pt-BR");
+    
+    const payload = {
+      id: newPostId,
+      titulo: `${prefix}: ${man.name}`,
+      data_publicacao: dateStr,
+      mensagem: `${descPrefix}\n\nLegado Principal: ${man.mainLegacy}\n\n${man.story}`,
+      autor: "Lemos Faya de Arcanjo",
+      imagem_url: man.photoUrl || ""
+    };
+
+    try {
+      const res = await fetch("/api/db/postagens/add", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+
+      if (res.ok) {
+        window.dispatchEvent(new CustomEvent("refresh-announcements"));
+        showToast("Partilhado com sucesso no Mural de Postagens!");
+      } else {
+        showToast("Erro ao partilhar no Mural.", "error");
+      }
+    } catch (err) {
+      console.warn(err);
+      window.dispatchEvent(new CustomEvent("refresh-announcements"));
+      showToast("Partilhado e salvo em cache local.", "success");
+    }
+  };
+
   // Inicializa o cliente do Supabase no frontend e estabelece a sincronização em tempo real
   useEffect(() => {
     let activeChannel: any = null;
@@ -471,9 +499,47 @@ export default function HomensDeDeusView({
               setReactions(fetchedReactions);
               localStorage.setItem("escola_mural_comments", JSON.stringify(fetchedComments));
               localStorage.setItem("escola_mural_reactions", JSON.stringify(fetchedReactions));
+
+              const fetchedConfig = result.data.configuracoes || [];
+              const hiddenConf = fetchedConfig.find((c: any) => c.chave === "hidden_men_ids");
+              if (hiddenConf) {
+                try {
+                  const remoteHidden = JSON.parse(hiddenConf.valor);
+                  if (Array.isArray(remoteHidden)) {
+                    setHiddenIds(remoteHidden);
+                    localStorage.setItem("escola_da_fe_hidden_men_ids", JSON.stringify(remoteHidden));
+                  }
+                } catch (e) {
+                  console.warn("Erro ao fazer parse de hidden_men_ids local:", e);
+                }
+              }
+
+              const fetchedHomens = result.data.homens || [];
+              if (fetchedHomens.length > 0) {
+                const mapped: HomemDeDeus[] = fetchedHomens
+                  .map((row: any) => ({
+                    id: row.id,
+                    name: row.nome || "",
+                    story: row.descricao || "",
+                    photoUrl: row.imagem || "",
+                    era: row.era || "Contemporâneo",
+                    birthAndDeath: row.birth_and_death || "Biografia viva",
+                    mainLegacy: row.main_legacy || "Servo de Deus",
+                    bibleVerse: row.bible_verse || ""
+                  }))
+                  .filter((it: HomemDeDeus) => !isMockedItem(it));
+                setItems(mapped);
+
+                const presentMocked = fetchedHomens.filter((row: any) => isMockedItem({ id: row.id, name: row.nome || "" } as any));
+                if (presentMocked.length > 0) {
+                  for (const item of presentMocked) {
+                    fetch(`/api/db/homens/${item.id}`, { method: "DELETE" }).catch(() => {});
+                  }
+                }
+              }
             }
           } catch (err) {
-            console.warn("Erro ao buscar dados locais de comments/reactions:", err);
+            console.warn("Erro ao buscar dados locais de comments/reactions/homens:", err);
           }
           setIsLoading(false);
           return;
@@ -502,22 +568,50 @@ export default function HomensDeDeusView({
           localStorage.setItem("escola_mural_reactions", JSON.stringify(reactionsData));
         }
 
+        const { data: configData } = await supabase
+          .from("configuracoes_sociais")
+          .select("*")
+          .eq("chave", "hidden_men_ids");
+        if (configData && configData.length > 0 && isMounted) {
+          try {
+            const remoteHidden = JSON.parse(configData[0].valor);
+            if (Array.isArray(remoteHidden)) {
+              setHiddenIds(remoteHidden);
+              localStorage.setItem("escola_da_fe_hidden_men_ids", JSON.stringify(remoteHidden));
+            }
+          } catch (e) {
+            console.warn("Erro ao fazer parse de hidden_men_ids da nuvem:", e);
+          }
+        }
+
         if (!isMounted) return;
 
         if (error) {
           console.error("Erro ao buscar dados do Supabase:", error);
         } else if (data && data.length > 0) {
-          const mapped: HomemDeDeus[] = data.map((row: any) => ({
-            id: row.id,
-            name: row.nome || "",
-            story: row.descricao || "",
-            photoUrl: row.imagem || "",
-            era: row.era || "Contemporâneo",
-            birthAndDeath: row.birth_and_death || "Biografia viva",
-            mainLegacy: row.main_legacy || "Servo de Deus",
-            bibleVerse: row.bible_verse || ""
-          }));
+          const mapped: HomemDeDeus[] = data
+            .map((row: any) => ({
+              id: row.id,
+              name: row.nome || "",
+              story: row.descricao || "",
+              photoUrl: row.imagem || "",
+              era: row.era || "Contemporâneo",
+              birthAndDeath: row.birth_and_death || "Biografia viva",
+              mainLegacy: row.main_legacy || "Servo de Deus",
+              bibleVerse: row.bible_verse || ""
+            }))
+            .filter((it: HomemDeDeus) => !isMockedItem(it));
           setItems(mapped);
+
+          const presentMocked = data.filter((row: any) => isMockedItem({ id: row.id, name: row.nome || "" } as any));
+          if (presentMocked.length > 0) {
+            for (const item of presentMocked) {
+              supabase.from("homens_de_deus").delete().eq("id", item.id).then(({ error: delErr }) => {
+                if (!delErr) console.log(`Removido com sucesso do banco de dados remoto: ${item.id}`);
+              });
+              fetch(`/api/db/homens/${item.id}`, { method: "DELETE" }).catch(() => {});
+            }
+          }
         }
 
         setIsLoading(false);
@@ -553,10 +647,12 @@ export default function HomensDeDeusView({
                   mainLegacy: row.main_legacy || "Servo de Deus",
                   bibleVerse: row.bible_verse || ""
                 };
-                setItems((prev) => {
-                  if (prev.some((it) => it.id === newItem.id)) return prev;
-                  return [newItem, ...prev];
-                });
+                if (!isMockedItem(newItem)) {
+                  setItems((prev) => {
+                    if (prev.some((it) => it.id === newItem.id)) return prev;
+                    return [newItem, ...prev];
+                  });
+                }
               } else if (eventType === "UPDATE") {
                 const row = payload.new;
                 const updatedItem: HomemDeDeus = {
@@ -569,12 +665,17 @@ export default function HomensDeDeusView({
                   mainLegacy: row.main_legacy || "Servo de Deus",
                   bibleVerse: row.bible_verse || ""
                 };
-                setItems((prev) =>
-                  prev.map((it) => (it.id === updatedItem.id ? updatedItem : it))
-                );
-                setSelectedMan((curr) =>
-                  curr && curr.id === updatedItem.id ? updatedItem : curr
-                );
+                if (isMockedItem(updatedItem)) {
+                  setItems((prev) => prev.filter((it) => it.id !== updatedItem.id));
+                  setSelectedMan((curr) => curr && curr.id === updatedItem.id ? null : curr);
+                } else {
+                  setItems((prev) =>
+                    prev.map((it) => (it.id === updatedItem.id ? updatedItem : it))
+                  );
+                  setSelectedMan((curr) =>
+                    curr && curr.id === updatedItem.id ? updatedItem : curr
+                  );
+                }
               } else if (eventType === "DELETE") {
                 const oldId = payload.old.id;
                 setItems((prev) => prev.filter((it) => it.id !== oldId));
@@ -687,7 +788,20 @@ export default function HomensDeDeusView({
   const [localIsAdmin, setLocalIsAdmin] = useState(() => {
     return localStorage.getItem("admin_logged") === "true";
   });
-  const isAdmin = propIsAdmin !== undefined ? propIsAdmin : localIsAdmin;
+  
+  // Combine both prop and local values, so if either is true, the user is an Admin
+  const isAdmin = !!(propIsAdmin || localIsAdmin);
+
+  useEffect(() => {
+    const handleGlobalAdminChange = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      if (customEvent.detail !== undefined) {
+        setLocalIsAdmin(customEvent.detail);
+      }
+    };
+    window.addEventListener("admin-state-changed", handleGlobalAdminChange);
+    return () => window.removeEventListener("admin-state-changed", handleGlobalAdminChange);
+  }, []);
 
   const [adminError, setAdminError] = useState("");
   const [isAddingNew, setIsAddingNew] = useState(false);
@@ -707,6 +821,10 @@ export default function HomensDeDeusView({
 
   // Filter and Search items
   const filtered = items.filter(item => {
+    if (!isAdmin && hiddenIds.includes(item.id)) {
+      return false;
+    }
+
     const term = search.toLowerCase();
     const matchesSearch = 
       item.name.toLowerCase().includes(term) || 
@@ -725,6 +843,7 @@ export default function HomensDeDeusView({
       localStorage.setItem("admin_logged", "true");
       setAdminError("");
       setInputCode("");
+      window.dispatchEvent(new CustomEvent("sync-admin-status", { detail: true }));
     } else {
       setAdminError("Código administrativo incorreto. Tente novamente.");
     }
@@ -863,6 +982,35 @@ export default function HomensDeDeusView({
     }
   };
 
+  const handleEditFromModal = () => {
+    if (!selectedMan) return;
+    setEditingItem(selectedMan);
+    setFieldName(selectedMan.name);
+    setFieldEra(selectedMan.era);
+    setFieldBirth(selectedMan.birthAndDeath);
+    setFieldLegacy(selectedMan.mainLegacy);
+    setFieldPhoto(selectedMan.photoUrl);
+    setFieldStory(selectedMan.story);
+    setFieldBibleVerse(selectedMan.bibleVerse || "");
+    setIsAddingNew(true);
+    setSelectedMan(null); // Close the modal
+    // Scroll to the edit form smoothly
+    setTimeout(() => {
+      const el = document.getElementById("homem-form-section");
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth" });
+      } else {
+        window.scrollTo({ top: 400, behavior: "smooth" });
+      }
+    }, 150);
+  };
+
+  const handleDeleteFromModal = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!selectedMan) return;
+    handleDeleteItem(selectedMan.id, e);
+  };
+
   return (
     <motion.div 
       initial={{ opacity: 0, y: 15 }} 
@@ -955,6 +1103,7 @@ export default function HomensDeDeusView({
                 onClick={() => {
                   setLocalIsAdmin(false);
                   localStorage.setItem("admin_logged", "false");
+                  window.dispatchEvent(new CustomEvent("sync-admin-status", { detail: false }));
                 }}
                 className="p-3 bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white rounded-xl transition-all text-xs font-bold"
                 title="Sair do Administrador"
@@ -993,6 +1142,7 @@ export default function HomensDeDeusView({
       {/* Form modal or section for Adding/Editing */}
       {isAddingNew && (
         <motion.div 
+          id="homem-form-section"
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           className="p-5 sm:p-8 bg-gradient-to-tr from-[#16254a]/10 to-transparent dark:from-accent/5 dark:to-transparent rounded-[2.5rem] border border-[#cfaf72]/20 shadow-md space-y-6"
@@ -1143,7 +1293,14 @@ export default function HomensDeDeusView({
       )}
 
       {/* Grid of Men of God - Cohesive Bento Style Layout */}
-      {filtered.length === 0 ? (
+      {isLoading ? (
+        <div className="flex flex-col items-center justify-center p-20 space-y-4 bg-white dark:bg-card-dark rounded-[2.5rem] border border-slate-100 dark:border-border-dark shadow-sm">
+          <div className="w-12 h-12 border-4 border-[#cfaf72] border-t-transparent rounded-full animate-spin" />
+          <p className="text-sm font-black text-[#cfaf72] tracking-wider uppercase animate-pulse text-center">
+            Carregando biografias reais...
+          </p>
+        </div>
+      ) : filtered.length === 0 ? (
         <div className="text-center p-16 bg-white dark:bg-card-dark rounded-[2.5rem] border border-slate-100 dark:border-border-dark">
           <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-400">
             <Users size={32} />
@@ -1193,9 +1350,16 @@ export default function HomensDeDeusView({
               <div className="flex-grow flex flex-col justify-between py-0.5 w-full">
                 <div>
                   <div className="flex items-center justify-center md:justify-between gap-1 sm:gap-4">
-                    <span className="text-[7px] sm:text-[9px] text-accent font-black uppercase tracking-widest bg-accent/10 px-1.5 py-0.5 sm:px-2 sm:py-0.5 rounded-full leading-none">
-                      {item.birthAndDeath}
-                    </span>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-[7px] sm:text-[9px] text-accent font-black uppercase tracking-widest bg-accent/10 px-1.5 py-0.5 sm:px-2 sm:py-0.5 rounded-full leading-none">
+                        {item.birthAndDeath}
+                      </span>
+                      {hiddenIds.includes(item.id) && (
+                        <span className="text-[7px] sm:text-[9px] text-rose-500 font-black uppercase tracking-widest bg-rose-500/10 px-1.5 py-0.5 sm:px-2 sm:py-0.5 rounded-full leading-none flex items-center gap-0.5">
+                          <EyeOff size={9} className="shrink-0" /> Ocultado
+                        </span>
+                      )}
+                    </div>
                     
                     {/* Admin Action triggers */}
                     {isAdmin && (
@@ -1262,7 +1426,11 @@ export default function HomensDeDeusView({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-[140] bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-0 sm:p-4"
-            onClick={() => setSelectedMan(null)}
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                setSelectedMan(null);
+              }
+            }}
           >
             <motion.div
               initial={{ scale: 0.98, y: 10, opacity: 0 }}
@@ -1379,6 +1547,95 @@ export default function HomensDeDeusView({
                         </>
                       )}
                     </button>
+                  </div>
+                )}
+
+                {/* Admin controls panel requested by user */}
+                {isAdmin && (
+                  <div className="p-4 sm:p-5 mt-4 bg-rose-500/5 dark:bg-rose-950/10 border border-rose-500/20 rounded-2xl flex flex-col gap-4">
+                    <div className="flex items-center gap-2 border-b border-rose-500/15 pb-2">
+                      <div className="w-2 h-2 bg-rose-500 rounded-full animate-pulse" />
+                      <h4 className="text-[11px] sm:text-xs font-black text-heading uppercase tracking-wider text-rose-600 dark:text-rose-400">
+                        Painel de Controle do Administrador
+                      </h4>
+                    </div>
+                    
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 flex-wrap">
+                      {/* Left actions on biography: Editar, Ocultar, Excluir */}
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <button
+                          onClick={() => {
+                            handleEditFromModal();
+                          }}
+                          className="h-[44px] px-4 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-extrabold text-[10px] sm:text-xs uppercase tracking-wider rounded-xl transition-all flex items-center justify-center gap-1.5 active:scale-95 border border-slate-200 dark:border-slate-700"
+                          title="Editar biografia"
+                        >
+                          <Edit3 size={14} className="text-blue-500" />
+                          Editar
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            handleToggleHide(selectedMan.id);
+                          }}
+                          className={cn(
+                            "h-[44px] px-4 font-extrabold text-[10px] sm:text-xs uppercase tracking-wider rounded-xl transition-all flex items-center justify-center gap-1.5 active:scale-95 border",
+                            hiddenIds.includes(selectedMan.id)
+                              ? "bg-rose-100 hover:bg-rose-200 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-400 dark:border-rose-900"
+                              : "bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border-slate-200 dark:border-slate-700"
+                          )}
+                          title={hiddenIds.includes(selectedMan.id) ? "Tornar Visível para Alunos" : "Ocultar de Alunos"}
+                        >
+                          {hiddenIds.includes(selectedMan.id) ? (
+                            <>
+                              <Eye size={14} className="text-emerald-500" />
+                              Desocultar
+                            </>
+                          ) : (
+                            <>
+                              <EyeOff size={14} className="text-orange-500" />
+                              Ocultar
+                            </>
+                          )}
+                        </button>
+
+                        <button
+                          onClick={(e) => {
+                            handleDeleteFromModal(e);
+                          }}
+                          className="h-[44px] px-4 bg-red-50/10 hover:bg-red-500 text-rose-600 hover:text-white dark:text-red-400 dark:hover:bg-red-950/50 font-extrabold text-[10px] sm:text-xs uppercase tracking-wider rounded-xl transition-all flex items-center justify-center gap-1.5 active:scale-95 border border-red-500/20"
+                          title="Excluir biografia permanentemente"
+                        >
+                          <Trash2 size={13} />
+                          Excluir
+                        </button>
+                      </div>
+
+                      {/* Right actions: Partilhar no mural como Publicação ou Comunicado */}
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <button
+                          onClick={() => {
+                            handleShareAsAnnouncementOrPublication(selectedMan, "publicacao");
+                          }}
+                          className="h-[44px] px-4 bg-gradient-to-r from-teal-500/10 to-teal-600/10 hover:from-teal-500 hover:to-teal-600 text-teal-600 hover:text-white dark:text-teal-400 dark:hover:text-emerald-500 font-extrabold text-[10px] sm:text-xs uppercase tracking-wider rounded-xl transition-all flex items-center justify-center gap-1.5 active:scale-95 border border-teal-500/25"
+                          title="Compartilhar no Mural como Publicação de estudo"
+                        >
+                          <Newspaper size={14} />
+                          Mural: Estudo
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            handleShareAsAnnouncementOrPublication(selectedMan, "comunicado");
+                          }}
+                          className="h-[44px] px-4 bg-gradient-to-r from-amber-500/10 to-amber-600/10 hover:from-amber-500 hover:to-amber-600 text-amber-600 hover:text-white dark:text-amber-440 dark:hover:text-amber-500 font-extrabold text-[10px] sm:text-xs uppercase tracking-wider rounded-xl transition-all flex items-center justify-center gap-1.5 active:scale-95 border border-amber-500/25"
+                          title="Compartilhar no Mural como Comunicado Importante"
+                        >
+                          <Megaphone size={14} />
+                          Mural: Comunicado
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 )}
 
