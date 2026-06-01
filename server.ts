@@ -143,7 +143,7 @@ async function startServer() {
     const fallback = getFallbackData();
 
     try {
-      // Safely query each table. If a table doesn't exist yet, catch the error (like 42P01) and load from JSON fallback.
+      // Safely query each table. If a table doesn't exist yet or has any error, load from JSON fallback.
       const safeQuery = async (tableName: string, fallbackKey: keyof FallbackData, defaultVal: any[] = []) => {
         if (!supabase) {
           return fallback[fallbackKey] || defaultVal;
@@ -152,16 +152,20 @@ async function startServer() {
           const { data, error } = await supabase.from(tableName).select("*");
           if (error) {
             console.warn(`Alerta de tabela (${tableName}):`, error.message);
-            if (error.code === "42P01" || error.code === "P0001" || error.code === "PGRST205") {
-              const localData = fallback[fallbackKey];
-              return (localData && localData.length > 0) ? localData : defaultVal;
+            const localData = fallback[fallbackKey];
+            return (localData && localData.length > 0) ? localData : defaultVal;
+          }
+          if (!data || data.length === 0) {
+            const localData = fallback[fallbackKey];
+            if (localData && localData.length > 0) {
+              return localData;
             }
-            return defaultVal;
           }
           return data || defaultVal;
         } catch (e: any) {
           console.warn(`Falha na consulta de ${tableName}:`, e.message || e);
-          return fallback[fallbackKey] || defaultVal;
+          const localData = fallback[fallbackKey];
+          return (localData && localData.length > 0) ? localData : defaultVal;
         }
       };
 

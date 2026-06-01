@@ -123,8 +123,22 @@ export default function HomensDeDeusView({
   isAdmin?: boolean;
   triggerConfirm?: (title: string, message: string, onConfirm: () => void) => void;
 }) {
-  const [items, setItems] = useState<HomemDeDeus[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [items, setItems] = useState<HomemDeDeus[]>(() => {
+    try {
+      const saved = localStorage.getItem("escola_mural_homens");
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [isLoading, setIsLoading] = useState(() => {
+    try {
+      const saved = localStorage.getItem("escola_mural_homens");
+      return saved ? JSON.parse(saved).length === 0 : true;
+    } catch {
+      return true;
+    }
+  });
   const [isSaving, setIsSaving] = useState(false);
 
   const [search, setSearch] = useState("");
@@ -173,6 +187,18 @@ export default function HomensDeDeusView({
   const [editingCommentText, setEditingCommentText] = useState<string>("");
   const lastCommentTime = React.useRef<number>(0);
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  useEffect(() => {
+    localStorage.setItem("escola_mural_homens", JSON.stringify(items));
+  }, [items]);
+
+  useEffect(() => {
+    localStorage.setItem("escola_mural_comments", JSON.stringify(comments));
+  }, [comments]);
+
+  useEffect(() => {
+    localStorage.setItem("escola_mural_reactions", JSON.stringify(reactions));
+  }, [reactions]);
 
   const showToast = (text: string, type: "success" | "error" = "success") => {
     setFeedback({ type, text });

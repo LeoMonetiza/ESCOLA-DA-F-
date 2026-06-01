@@ -28,6 +28,32 @@
     <meta name="apple-mobile-web-app-title" content="Escola da Fé" />
     <link rel="apple-touch-icon" href="/logo_pwa_icon.png" />
 
+    <!-- Anti-flicker Inline Theme Guard -->
+    <script>
+      (function() {
+        try {
+          const saved = localStorage.getItem('theme');
+          let isDark = false;
+          if (saved === 'dark') {
+            isDark = true;
+          } else if (saved === 'light') {
+            isDark = false;
+          } else {
+            isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          }
+          if (isDark) {
+            document.documentElement.classList.add('dark');
+            document.documentElement.setAttribute('data-theme', 'dark');
+          } else {
+            document.documentElement.classList.remove('dark');
+            document.documentElement.setAttribute('data-theme', 'light');
+          }
+        } catch (e) {
+          console.error("Theme Guard error", e);
+        }
+      })();
+    </script>
+
   </head>
 
   <body>

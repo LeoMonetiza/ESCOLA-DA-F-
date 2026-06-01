@@ -21,6 +21,7 @@ import {
   ChevronLeft,
   Moon,
   Sun,
+  Monitor,
   ChevronRight,
   Home as HomeIcon,
   Users,
@@ -37,7 +38,8 @@ import {
   Copy,
   Database,
   Heart,
-  Pencil
+  Pencil,
+  Sparkles
 } from "lucide-react";
 import { cn } from "@/src/lib/utils";
 import { BIBLICAL_THEMES, BIBLICAL_NAMES, BIBLICAL_STORIES, THEOLOGY_TOPICS, BASIC_COURSE } from "@/src/data/biblicalData";
@@ -46,6 +48,7 @@ import HomensDeDeusView from "./components/HomensDeDeus";
 import Community from "./components/Community";
 import PWAController from "./components/PWAController";
 import LivretoManager from "./components/LivretoManager";
+import AttributesOfGodView from "./components/AttributesOfGodView";
 import { getSupabaseClient, checkSupabaseConfigExists } from "./lib/supabaseClient";
 import { optimizeItemContent } from "./lib/contentOptimizer";
 import { 
@@ -228,6 +231,9 @@ function getBibleVerseForItem(item: any): { reference: string; text: string } {
   }
 
   // --- FAMOUS BIBLE CHARACTERS (DICTIONARY OF NAMES) ---
+  if (nameLower.includes("enoque")) {
+    return { reference: "Gênesis 5:24", text: "E andou Enoque com Deus; e não se viu mais, porquanto Deus para si o tomou." };
+  }
   if (nameLower.includes("moisés") || nameLower.includes("moises")) {
     return { reference: "Hebreus 11:24-25", text: "Pela fé Moisés, sendo já grande, recusou ser chamado filho da filha de Faraó, escolhendo antes ser maltratado com o povo de Deus." };
   }
@@ -866,7 +872,29 @@ function StudyDetailModal({
   );
 }
 
-function Navbar({ isDark, toggleDark, isAdmin, setIsAdmin, dbStatus, onSync, supabaseConfigMissing }: { isDark: boolean, toggleDark: () => void, isAdmin: boolean, setIsAdmin: (val: boolean) => void, dbStatus: "connecting" | "online" | "offline", onSync: () => void, supabaseConfigMissing?: boolean }) {
+function Navbar({ 
+  isDark, 
+  theme = "system", 
+  setTheme, 
+  toggleDark, 
+  isAdmin, 
+  setIsAdmin, 
+  dbStatus, 
+  onSync, 
+  supabaseConfigMissing,
+  onRestoreDefaults
+}: { 
+  isDark: boolean, 
+  theme?: "light" | "dark" | "system", 
+  setTheme?: (val: "light" | "dark" | "system") => void, 
+  toggleDark: () => void, 
+  isAdmin: boolean, 
+  setIsAdmin: (val: boolean) => void, 
+  dbStatus: "connecting" | "online" | "offline", 
+  onSync: () => void, 
+  supabaseConfigMissing?: boolean,
+  onRestoreDefaults?: () => void
+}) {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
   const [adminCodeInput, setAdminCodeInput] = useState("");
@@ -880,6 +908,7 @@ function Navbar({ isDark, toggleDark, isAdmin, setIsAdmin, dbStatus, onSync, sup
     { name: "Histórias", path: "/historias", icon: <History size={20} /> },
     { name: "Homens de Deus", path: "/homens-deus", icon: <Users size={20} /> },
     { name: "Teologia", path: "/teologia", icon: <Library size={20} /> },
+    { name: "Atributos", path: "/atributos", icon: <Sparkles size={20} /> },
     { name: "Curso", path: "/curso", icon: <GraduationCap size={20} /> },
     { name: "Mural", path: "/comunidade", icon: <MessageCircle size={20} /> },
     { name: "Apoia a Missão", path: "/apoio", icon: <Heart size={20} className="text-pink-500 animate-pulse" /> },
@@ -901,6 +930,21 @@ function Navbar({ isDark, toggleDark, isAdmin, setIsAdmin, dbStatus, onSync, sup
   const handleAdminLogout = () => {
     setIsAdmin(false);
     alert("Saída concluída. Painel administrativo desativado.");
+  };
+
+  // Safe cycling of theme properties: light -> dark -> system -> light
+  const handleThemeShiftCycle = () => {
+    if (setTheme) {
+      if (theme === "light") {
+        setTheme("dark");
+      } else if (theme === "dark") {
+        setTheme("system");
+      } else {
+        setTheme("light");
+      }
+    } else {
+      toggleDark();
+    }
   };
 
   return (
@@ -944,8 +988,8 @@ function Navbar({ isDark, toggleDark, isAdmin, setIsAdmin, dbStatus, onSync, sup
 
         {/* Right side actions (Supabase Badge, Theme toggle and Admin Trigger) */}
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-          {/* Supabase Connection Status Indicator */}
-          {dbStatus === "connecting" && (
+          {/* Supabase Connection Status Indicator - ADMIN ONLY */}
+          {isAdmin && dbStatus === "connecting" && (
             <button
               type="button"
               onClick={onSync}
@@ -958,7 +1002,7 @@ function Navbar({ isDark, toggleDark, isAdmin, setIsAdmin, dbStatus, onSync, sup
             </button>
           )}
 
-          {dbStatus === "online" && (
+          {isAdmin && dbStatus === "online" && (
             <button
               type="button"
               onClick={onSync}
@@ -971,7 +1015,7 @@ function Navbar({ isDark, toggleDark, isAdmin, setIsAdmin, dbStatus, onSync, sup
             </button>
           )}
 
-          {dbStatus === "offline" && (
+          {isAdmin && dbStatus === "offline" && (
             <button
               type="button"
               onClick={onSync}
@@ -984,20 +1028,42 @@ function Navbar({ isDark, toggleDark, isAdmin, setIsAdmin, dbStatus, onSync, sup
             </button>
           )}
 
-          {/* Theme Toggler for Desktop & Mobile */}
+          {/* Theme Toggler for Desktop & Mobile (Cycling through Light/Dark/System) */}
           <button 
-            onClick={toggleDark}
-            className="p-2.5 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white rounded-xl transition-all cursor-pointer"
-            title={isDark ? "Mudar para Modo Claro" : "Mudar para Modo Escuro"}
+            onClick={handleThemeShiftCycle}
+            className="flex items-center gap-1 p-2.5 bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5 hover:bg-slate-200 dark:hover:bg-white/10 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white rounded-xl transition-all cursor-pointer"
+            title={
+              theme === "light" 
+                ? "Tema Ativo: Claro (Clique para Escuro)" 
+                : theme === "dark" 
+                ? "Tema Ativo: Escuro (Clique para Sistema)" 
+                : "Tema Ativo: Sistema (Seguindo dispositivo - Clique para Claro)"
+            }
           >
-            {isDark ? <Sun size={18} className="text-accent" /> : <Moon size={18} />}
+            {theme === "light" && <Sun size={18} className="text-amber-500" />}
+            {theme === "dark" && <Moon size={18} className="text-accent" />}
+            {theme === "system" && (
+              <div className="flex items-center gap-1">
+                <Monitor size={18} className="text-blue-500 dark:text-blue-400" />
+                <span className="text-[10px] font-black uppercase text-blue-500 dark:text-blue-400 hidden sm:inline tracking-wider bg-blue-500/10 px-1 py-0.5 rounded-md">Auto</span>
+              </div>
+            )}
           </button>
 
           {/* Admin section in Desktop Horizontal Navbar */}
           <div className="hidden lg:block">
             {isAdmin ? (
               <div className="flex items-center gap-2 bg-emerald-950/40 border border-emerald-500/30 rounded-xl px-4 py-2">
-                <span className="text-xs font-black uppercase tracking-widest text-[#cfaf72]">ADMIN ACTIVATED</span>
+                <span className="text-xs font-black uppercase tracking-widest text-[#cfaf72]">ADMIN</span>
+                {onRestoreDefaults && (
+                  <button 
+                    onClick={onRestoreDefaults}
+                    className="px-3 py-1 bg-amber-500 hover:bg-amber-400 text-slate-900 font-black text-xs rounded-lg transition-all uppercase tracking-wider"
+                    title="Restaurar todo o conteúdo original que veio por padrão de fábrica no aplicativo"
+                  >
+                    Restaurar Conteúdo
+                  </button>
+                )}
                 <button 
                   onClick={handleAdminLogout}
                   className="px-3 py-1 bg-emerald-500 hover:bg-emerald-400 text-[#1A237E] font-black text-xs rounded-lg transition-all uppercase tracking-wider"
@@ -1056,7 +1122,7 @@ function Navbar({ isDark, toggleDark, isAdmin, setIsAdmin, dbStatus, onSync, sup
             initial={{ opacity: 0, x: "100%" }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: "100%" }}
-            className="fixed inset-0 bg-white dark:bg-secondary z-[90] lg:hidden pt-24 px-6 flex flex-col overflow-y-auto"
+            className="fixed inset-0 bg-white dark:bg-secondary z-[90] lg:hidden pt-24 px-6 flex flex-col overflow-y-auto pb-8"
           >
             <div className="space-y-3">
               {navItems.map((item) => (
@@ -1076,11 +1142,62 @@ function Navbar({ isDark, toggleDark, isAdmin, setIsAdmin, dbStatus, onSync, sup
                 </Link>
               ))}
 
+              {/* Tema Switcher segment controller inside Mobile Menu Drawer */}
+              <div className="border-t border-slate-100 dark:border-white/5 pt-6 mt-6">
+                <p className="text-xs font-black uppercase tracking-widest text-[#cfaf72] mb-3 text-center">Aparência do Aplicativo</p>
+                <div className="grid grid-cols-3 gap-2 p-1.5 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-white/5">
+                  <button
+                    onClick={() => { if (setTheme) setTheme("light"); }}
+                    className={cn(
+                      "flex flex-col items-center justify-center gap-1.5 py-3 rounded-xl transition-all cursor-pointer",
+                      theme === "light"
+                        ? "bg-white text-amber-500 shadow-md border border-slate-250/50"
+                        : "text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white"
+                    )}
+                  >
+                    <Sun size={20} />
+                    <span className="text-[10px] font-black uppercase tracking-wider">Claro</span>
+                  </button>
+                  <button
+                    onClick={() => { if (setTheme) setTheme("dark"); }}
+                    className={cn(
+                      "flex flex-col items-center justify-center gap-1.5 py-3 rounded-xl transition-all cursor-pointer",
+                      theme === "dark"
+                        ? "bg-slate-800 text-accent shadow-md border border-transparent"
+                        : "text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white"
+                    )}
+                  >
+                    <Moon size={20} />
+                    <span className="text-[10px] font-black uppercase tracking-wider">Escuro</span>
+                  </button>
+                  <button
+                    onClick={() => { if (setTheme) setTheme("system"); }}
+                    className={cn(
+                      "flex flex-col items-center justify-center gap-1.5 py-3 rounded-xl transition-all cursor-pointer",
+                      theme === "system"
+                        ? "bg-[#cfaf72] text-secondary shadow-md border border-transparent font-black"
+                        : "text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white"
+                    )}
+                  >
+                    <Monitor size={20} />
+                    <span className="text-[10px] font-black uppercase tracking-wider">Auto</span>
+                  </button>
+                </div>
+              </div>
+
               {/* Admin mobile login */}
               <div className="border-t border-slate-100 dark:border-white/5 pt-4 mt-6">
                 {isAdmin ? (
-                  <div className="bg-emerald-50 dark:bg-emerald-950/45 border border-emerald-200 dark:border-emerald-500/30 rounded-3xl p-6 text-center">
-                    <p className="text-xs font-black uppercase tracking-wider text-[#cfaf72] mb-3">Painel Admin Ativo</p>
+                  <div className="bg-emerald-50 dark:bg-emerald-950/45 border border-emerald-200 dark:border-emerald-500/30 rounded-3xl p-6 text-center space-y-3">
+                    <p className="text-xs font-black uppercase tracking-wider text-[#cfaf72]">Painel Admin Ativo</p>
+                    {onRestoreDefaults && (
+                      <button 
+                        onClick={() => { onRestoreDefaults(); setIsOpen(false); }}
+                        className="w-full py-3.5 bg-amber-500 text-slate-900 font-extrabold text-xs rounded-2xl uppercase tracking-wider"
+                      >
+                        Restaurar Conteúdo Padrão
+                      </button>
+                    )}
                     <button 
                       onClick={() => { handleAdminLogout(); setIsOpen(false); }}
                       className="w-full py-4 bg-emerald-500 text-white font-black text-sm rounded-2xl"
@@ -2652,7 +2769,15 @@ function Studies({
                   </div>
                 )}
               </div>
-              <h3 className="font-black text-lg text-heading mb-2 group-hover:text-primary transition-colors leading-tight">{theme.title}</h3>
+              <h3 className="font-black text-lg text-heading mb-1 group-hover:text-primary transition-colors leading-tight">{theme.title}</h3>
+              {(() => {
+                const verse = getBibleVerseForItem(theme);
+                return verse?.reference && verse.reference !== "N/A" ? (
+                  <span className="inline-flex items-center gap-1 text-[10px] bg-amber-500/10 text-amber-600 dark:text-amber-400 font-bold px-2.5 py-1 rounded-full mb-3 border border-amber-500/15">
+                    📖 {verse.reference}
+                  </span>
+                ) : null;
+              })()}
               <p className="text-xs text-muted line-clamp-4 leading-relaxed mb-4 font-semibold">{theme.description}</p>
             </div>
             <div className="flex items-center gap-2 text-primary font-black text-[10px] uppercase tracking-widest mt-auto group-hover:translate-x-2 transition-transform">
@@ -2936,7 +3061,15 @@ function Dictionary({
             </div>
             <div className="flex-grow pr-16">
               <h4 className="font-black text-heading text-xl leading-none mb-1.5 group-hover:text-primary transition-colors">{item.name}</h4>
-              <p className="text-xs text-accent font-black uppercase tracking-widest break-words whitespace-normal leading-relaxed">{item.meaning}</p>
+              <p className="text-xs text-accent font-black uppercase tracking-widest break-words whitespace-normal leading-relaxed mb-1.5">{item.meaning}</p>
+              {(() => {
+                const verse = getBibleVerseForItem(item);
+                return verse?.reference && verse.reference !== "N/A" ? (
+                  <span className="inline-flex items-center text-[10px] text-amber-600 dark:text-amber-400 font-bold bg-amber-500/10 px-2.5 py-0.5 rounded-md border border-amber-500/15">
+                    📖 {verse.reference}
+                  </span>
+                ) : null;
+              })()}
             </div>
             {isAdmin && (
               <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-1 z-10">
@@ -3223,7 +3356,15 @@ function Stories({
                   <User size={40} className="group-hover:scale-110 transition-transform" />
                 </div>
                 <div className="p-5 sm:p-6 flex flex-col justify-center flex-grow pr-12">
-                  <h4 className="font-black text-heading text-lg mb-2 group-hover:text-primary transition-colors tracking-tight">{story.title}</h4>
+                  <h4 className="font-black text-heading text-lg mb-1 group-hover:text-primary transition-colors tracking-tight">{story.title}</h4>
+                  {(() => {
+                    const verse = getBibleVerseForItem(story);
+                    return verse?.reference && verse.reference !== "N/A" ? (
+                      <span className="self-start text-[10px] text-amber-600 dark:text-amber-400 font-bold bg-amber-500/10 px-2.5 py-0.5 rounded-full mb-2 border border-amber-500/15">
+                        📖 {verse.reference}
+                      </span>
+                    ) : null;
+                  })()}
                   <p className="text-xs sm:text-sm text-muted leading-relaxed line-clamp-3 font-semibold">{story.summary}</p>
                 </div>
                 {isAdmin && (
@@ -3273,7 +3414,15 @@ function Stories({
                   <MapPin size={40} className="group-hover:scale-110 transition-transform" />
                 </div>
                 <div className="p-5 sm:p-6 flex flex-col justify-center flex-grow pr-12 bg-slate-50/10 dark:bg-slate-900/10">
-                  <h4 className="font-black text-heading text-lg mb-2 tracking-tight">{story.title}</h4>
+                  <h4 className="font-black text-heading text-lg mb-1 tracking-tight">{story.title}</h4>
+                  {(() => {
+                    const verse = getBibleVerseForItem(story);
+                    return verse?.reference && verse.reference !== "N/A" ? (
+                      <span className="self-start text-[10px] text-amber-600 dark:text-amber-400 font-bold bg-amber-500/10 px-2.5 py-0.5 rounded-full mb-2 border border-amber-500/15">
+                        📖 {verse.reference}
+                      </span>
+                    ) : null;
+                  })()}
                   <p className="text-xs sm:text-sm text-muted leading-relaxed line-clamp-3 font-semibold">{story.summary}</p>
                 </div>
                 {isAdmin && (
@@ -3555,7 +3704,15 @@ function Theology({
                 </div>
               </div>
             </div>
-            <h4 className="text-lg font-black text-heading mb-2 group-hover:text-primary transition-colors tracking-tight leading-tight">{topic.title}</h4>
+            <h4 className="text-lg font-black text-heading mb-1 group-hover:text-primary transition-colors tracking-tight leading-tight">{topic.title}</h4>
+            {(() => {
+              const verse = getBibleVerseForItem(topic);
+              return verse?.reference && verse.reference !== "N/A" ? (
+                <span className="self-start text-[10px] text-amber-600 dark:text-amber-400 font-bold bg-amber-500/10 px-2.5 py-0.5 rounded-full mb-2.5 border border-amber-500/15 inline-block">
+                  📖 {verse.reference}
+                </span>
+              ) : null;
+            })()}
             <p className="text-xs text-muted leading-relaxed mb-4 font-semibold line-clamp-3">{topic.description}</p>
             <div className="mt-auto pt-3.5 border-t border-border-light dark:border-border-dark flex items-center justify-between">
               <span className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">Exposição Completa</span>
@@ -3818,7 +3975,15 @@ function Course({
                   {displayNum}
                 </div>
                 <div className="flex-grow pr-16 animate-none">
-                  <h4 className="font-black text-heading text-2xl mb-2 group-hover:text-primary transition-colors tracking-tight">{lesson.title}</h4>
+                  <h4 className="font-black text-heading text-2xl mb-1 group-hover:text-primary transition-colors tracking-tight">{lesson.title}</h4>
+                  {(() => {
+                    const verse = getBibleVerseForItem(enrichedLesson);
+                    return verse?.reference && verse.reference !== "N/A" ? (
+                      <span className="inline-block text-[10px] text-amber-600 dark:text-amber-400 font-bold bg-amber-500/10 px-2.5 py-0.5 rounded-full mb-2 border border-amber-500/15">
+                        📖 {verse.reference}
+                      </span>
+                    ) : null;
+                  })()}
                   <p className="text-base text-muted font-medium">{lesson.description}</p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0 z-10">
@@ -4081,7 +4246,7 @@ function ApoiaMissao({
 
 // --- Main App & Router Wrapper ---
 
-function AppContent({ isDark, setIsDark }: { isDark: boolean, setIsDark: (val: boolean) => void }) {
+function AppContent({ isDark, theme, setTheme }: { isDark: boolean, theme: "light" | "dark" | "system", setTheme: (val: "light" | "dark" | "system") => void }) {
   const location = useLocation();
 
   // Dynamic links and support channels
@@ -4215,7 +4380,20 @@ function AppContent({ isDark, setIsDark }: { isDark: boolean, setIsDark: (val: b
   const [themes, setThemes] = useState<any[]>(() => {
     try {
       const saved = localStorage.getItem("escola_da_fe_themes");
-      return saved ? JSON.parse(saved) : BIBLICAL_THEMES;
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          const deletedIds = JSON.parse(localStorage.getItem("escola_da_fe_deleted_ids") || "[]");
+          const merged = [...parsed];
+          BIBLICAL_THEMES.forEach(def => {
+            if (!merged.some(m => m.id === def.id) && !deletedIds.includes(def.id)) {
+              merged.push(def);
+            }
+          });
+          return merged;
+        }
+      }
+      return BIBLICAL_THEMES;
     } catch {
       return BIBLICAL_THEMES;
     }
@@ -4224,7 +4402,20 @@ function AppContent({ isDark, setIsDark }: { isDark: boolean, setIsDark: (val: b
   const [names, setNames] = useState<any[]>(() => {
     try {
       const saved = localStorage.getItem("escola_da_fe_names");
-      return saved ? JSON.parse(saved) : BIBLICAL_NAMES;
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          const deletedIds = JSON.parse(localStorage.getItem("escola_da_fe_deleted_ids") || "[]");
+          const merged = [...parsed];
+          BIBLICAL_NAMES.forEach(def => {
+            if (!merged.some(m => m.name === def.name) && !deletedIds.includes(def.name)) {
+              merged.push(def);
+            }
+          });
+          return merged;
+        }
+      }
+      return BIBLICAL_NAMES;
     } catch {
       return BIBLICAL_NAMES;
     }
@@ -4233,7 +4424,20 @@ function AppContent({ isDark, setIsDark }: { isDark: boolean, setIsDark: (val: b
   const [stories, setStories] = useState<any[]>(() => {
     try {
       const saved = localStorage.getItem("escola_da_fe_stories");
-      return saved ? JSON.parse(saved) : BIBLICAL_STORIES;
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          const deletedIds = JSON.parse(localStorage.getItem("escola_da_fe_deleted_ids") || "[]");
+          const merged = [...parsed];
+          BIBLICAL_STORIES.forEach(def => {
+            if (!merged.some(m => m.id === def.id) && !deletedIds.includes(def.id)) {
+              merged.push(def);
+            }
+          });
+          return merged;
+        }
+      }
+      return BIBLICAL_STORIES;
     } catch {
       return BIBLICAL_STORIES;
     }
@@ -4242,7 +4446,44 @@ function AppContent({ isDark, setIsDark }: { isDark: boolean, setIsDark: (val: b
   const [theologyTopics, setTheologyTopics] = useState<any[]>(() => {
     try {
       const saved = localStorage.getItem("escola_da_fe_theology");
-      return saved ? JSON.parse(saved) : THEOLOGY_TOPICS;
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          const deletedIds = JSON.parse(localStorage.getItem("escola_da_fe_deleted_ids") || "[]");
+          
+          const updatedParsed = parsed.map((item: any) => {
+            const matchingDefault = THEOLOGY_TOPICS.find(def => def.id === item.id);
+            if (matchingDefault) {
+              const isInvalid = !item.content || item.content.length < 100 || (
+                item.content.toLowerCase().includes("cenário laboral") ||
+                item.content.toLowerCase().includes("garantir exemplar") ||
+                item.content.toLowerCase().includes("bíblia histórica") ||
+                item.content.toLowerCase().includes("ambiente doméstico") ||
+                item.content.toLowerCase().includes("jovem chamado lucas") ||
+                item.content.toLowerCase().includes("água potável") ||
+                item.content.toLowerCase().includes("notícias difíceis") ||
+                item.content.toLowerCase().includes("obstáculo na atualidade")
+              );
+              return {
+                ...item,
+                title: matchingDefault.title,
+                description: matchingDefault.description,
+                content: isInvalid ? matchingDefault.content : item.content,
+              };
+            }
+            return item;
+          });
+
+          const merged = [...updatedParsed];
+          THEOLOGY_TOPICS.forEach(def => {
+            if (!merged.some(m => m.id === def.id) && !deletedIds.includes(def.id)) {
+              merged.push(def);
+            }
+          });
+          return merged;
+        }
+      }
+      return THEOLOGY_TOPICS;
     } catch {
       return THEOLOGY_TOPICS;
     }
@@ -4251,7 +4492,20 @@ function AppContent({ isDark, setIsDark }: { isDark: boolean, setIsDark: (val: b
   const [courseLessons, setCourseLessons] = useState<any[]>(() => {
     try {
       const saved = localStorage.getItem("escola_da_fe_course");
-      return saved ? JSON.parse(saved) : BASIC_COURSE;
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          const deletedIds = JSON.parse(localStorage.getItem("escola_da_fe_deleted_ids") || "[]");
+          const merged = [...parsed];
+          BASIC_COURSE.forEach(def => {
+            if (!merged.some(m => m.lesson === def.lesson) && !deletedIds.includes(`course_${def.lesson}`)) {
+              merged.push(def);
+            }
+          });
+          return merged.sort((a, b) => a.lesson - b.lesson);
+        }
+      }
+      return BASIC_COURSE;
     } catch {
       return BASIC_COURSE;
     }
@@ -4512,14 +4766,27 @@ function AppContent({ isDark, setIsDark }: { isDark: boolean, setIsDark: (val: b
             }
             return true;
           })
-          .map((row: any) => ({
-            id: row.id,
-            title: row.titulo,
-            description: row.descricao,
-            category: row.categoria || "Estudo Bíblico",
-            content: row.conteudo,
-            bibleVerse: row.referencia_biblica || ""
-          }));
+          .map((row: any) => {
+            const localDefault = BIBLICAL_THEMES.find(def => def.id === row.id);
+            const isBoilerplate = row.conteudo && (
+              row.conteudo.toLowerCase().includes("cenário laboral") ||
+              row.conteudo.toLowerCase().includes("garantir exemplar") ||
+              row.conteudo.toLowerCase().includes("bíblia histórica") ||
+              row.conteudo.toLowerCase().includes("ambiente doméstico") ||
+              row.conteudo.toLowerCase().includes("jovem chamado lucas") ||
+              row.conteudo.toLowerCase().includes("água potável") ||
+              row.conteudo.toLowerCase().includes("notícias difíceis") ||
+              row.conteudo.toLowerCase().includes("obstáculo na atualidade")
+            );
+            return {
+              id: row.id,
+              title: row.titulo,
+              description: row.descricao,
+              category: row.categoria || "Estudo Bíblico",
+              content: (localDefault && (!row.conteudo || isBoilerplate)) ? localDefault.content : row.conteudo,
+              bibleVerse: row.referencia_biblica || ""
+            };
+          });
         setThemes((prev: any[]) => {
           const merged = [...mappedEstudos];
           (prev || []).forEach(localItem => {
@@ -4544,13 +4811,26 @@ function AppContent({ isDark, setIsDark }: { isDark: boolean, setIsDark: (val: b
             }
             return true;
           })
-          .map((row: any) => ({
-            name: row.termo,
-            meaning: row.significado,
-            description: row.descricao || "",
-            content: row.conteudo || "",
-            bibleVerse: row.referencia_biblica || ""
-          }));
+          .map((row: any) => {
+            const localDefault = BIBLICAL_NAMES.find(def => def.name === row.termo);
+            const isBoilerplate = row.conteudo && (
+              row.conteudo.toLowerCase().includes("cenário laboral") ||
+              row.conteudo.toLowerCase().includes("garantir exemplar") ||
+              row.conteudo.toLowerCase().includes("bíblia histórica") ||
+              row.conteudo.toLowerCase().includes("ambiente doméstico") ||
+              row.conteudo.toLowerCase().includes("jovem chamado lucas") ||
+              row.conteudo.toLowerCase().includes("água potável") ||
+              row.conteudo.toLowerCase().includes("notícias difíceis") ||
+              row.conteudo.toLowerCase().includes("obstáculo na atualidade")
+            );
+            return {
+              name: row.termo,
+              meaning: row.significado,
+              description: row.descricao || "",
+              content: (localDefault && (!row.conteudo || isBoilerplate)) ? localDefault.content : (row.conteudo || ""),
+              bibleVerse: row.referencia_biblica || ""
+            };
+          });
         setNames((prev: any[]) => {
           const merged = [...mappedDicionario];
           (prev || []).forEach(localItem => {
@@ -4575,14 +4855,27 @@ function AppContent({ isDark, setIsDark }: { isDark: boolean, setIsDark: (val: b
             }
             return true;
           })
-          .map((row: any) => ({
-            id: row.id,
-            title: row.title,
-            type: row.type,
-            summary: row.summary,
-            content: row.content,
-            bibleVerse: row.referencia_biblica || ""
-          }));
+          .map((row: any) => {
+            const localDefault = BIBLICAL_STORIES.find(def => def.id === row.id);
+            const isBoilerplate = row.content && (
+              row.content.toLowerCase().includes("cenário laboral") ||
+              row.content.toLowerCase().includes("garantir exemplar") ||
+              row.content.toLowerCase().includes("bíblia histórica") ||
+              row.content.toLowerCase().includes("ambiente doméstico") ||
+              row.content.toLowerCase().includes("jovem chamado lucas") ||
+              row.content.toLowerCase().includes("água potável") ||
+              row.content.toLowerCase().includes("notícias difíceis") ||
+              row.content.toLowerCase().includes("obstáculo na atualidade")
+            );
+            return {
+              id: row.id,
+              title: row.title,
+              type: row.type,
+              summary: row.summary,
+              content: (localDefault && (!row.content || isBoilerplate)) ? localDefault.content : row.content,
+              bibleVerse: row.referencia_biblica || ""
+            };
+          });
         setStories((prev: any[]) => {
           const merged = [...mappedHistorias];
           (prev || []).forEach(localItem => {
@@ -4607,18 +4900,51 @@ function AppContent({ isDark, setIsDark }: { isDark: boolean, setIsDark: (val: b
             }
             return true;
           })
-          .map((row: any) => ({
-            id: row.id,
-            title: row.titulo,
-            description: row.resumo,
-            content: row.conteudo_completo,
-            bibleVerse: row.referencias_biblicas || ""
-          }));
+          .map((row: any) => {
+            const localDefault = THEOLOGY_TOPICS.find(def => def.id === row.id);
+            const isBoilerplate = row.conteudo_completo && (
+              row.conteudo_completo.toLowerCase().includes("cenário laboral") ||
+              row.conteudo_completo.toLowerCase().includes("garantir exemplar") ||
+              row.conteudo_completo.toLowerCase().includes("bíblia histórica") ||
+              row.conteudo_completo.toLowerCase().includes("ambiente doméstico") ||
+              row.conteudo_completo.toLowerCase().includes("jovem chamado lucas") ||
+              row.conteudo_completo.toLowerCase().includes("água potável") ||
+              row.conteudo_completo.toLowerCase().includes("notícias difíceis") ||
+              row.conteudo_completo.toLowerCase().includes("obstáculo na atualidade")
+            );
+            return {
+              id: row.id,
+              title: (localDefault && (!row.titulo || row.titulo.trim() === "")) ? localDefault.title : row.titulo,
+              description: (localDefault && (!row.resumo || row.resumo.trim() === "")) ? localDefault.description : row.resumo,
+              content: (localDefault && (!row.conteudo_completo || isBoilerplate)) ? localDefault.content : row.conteudo_completo,
+              bibleVerse: row.referencias_biblicas || ""
+            };
+          });
         setTheologyTopics((prev: any[]) => {
           const merged = [...mappedTeologia];
           (prev || []).forEach(localItem => {
             if (!merged.some(m => m.id === localItem.id) && !deletedIds.includes(localItem.id)) {
-              merged.push(localItem);
+              const matchingDefault = THEOLOGY_TOPICS.find(def => def.id === localItem.id);
+              if (matchingDefault) {
+                const isInvalid = !localItem.content || localItem.content.length < 100 || (
+                  localItem.content.toLowerCase().includes("cenário laboral") ||
+                  localItem.content.toLowerCase().includes("garantir exemplar") ||
+                  localItem.content.toLowerCase().includes("bíblia histórica") ||
+                  localItem.content.toLowerCase().includes("ambiente doméstico") ||
+                  localItem.content.toLowerCase().includes("jovem chamado lucas") ||
+                  localItem.content.toLowerCase().includes("água potável") ||
+                  localItem.content.toLowerCase().includes("notícias difíceis") ||
+                  localItem.content.toLowerCase().includes("obstáculo na atualidade")
+                );
+                merged.push({
+                  ...localItem,
+                  title: matchingDefault.title,
+                  description: matchingDefault.description,
+                  content: isInvalid ? matchingDefault.content : localItem.content
+                });
+              } else {
+                merged.push(localItem);
+              }
             }
           });
           THEOLOGY_TOPICS.forEach(def => {
@@ -4638,13 +4964,26 @@ function AppContent({ isDark, setIsDark }: { isDark: boolean, setIsDark: (val: b
             }
             return true;
           })
-          .map((row: any) => ({
-            lesson: row.lesson,
-            title: row.titulo_licao,
-            description: row.description,
-            category: row.category || "Curso Teológico",
-            content: row.conteudo
-          }));
+          .map((row: any) => {
+            const localDefault = BASIC_COURSE.find(def => def.lesson === row.lesson);
+            const isBoilerplate = row.conteudo && (
+              row.conteudo.toLowerCase().includes("cenário laboral") ||
+              row.conteudo.toLowerCase().includes("garantir exemplar") ||
+              row.conteudo.toLowerCase().includes("bíblia histórica") ||
+              row.conteudo.toLowerCase().includes("ambiente doméstico") ||
+              row.conteudo.toLowerCase().includes("jovem chamado lucas") ||
+              row.conteudo.toLowerCase().includes("água potável") ||
+              row.conteudo.toLowerCase().includes("notícias difíceis") ||
+              row.conteudo.toLowerCase().includes("obstáculo na atualidade")
+            );
+            return {
+              lesson: row.lesson,
+              title: row.titulo_licao,
+              description: row.description,
+              category: row.category || "Curso Teológico",
+              content: (localDefault && (!row.conteudo || isBoilerplate)) ? localDefault.content : row.conteudo
+            };
+          });
         setCourseLessons((prev: any[]) => {
           const merged = [...mappedCurso];
           (prev || []).forEach(localItem => {
@@ -4941,6 +5280,32 @@ function AppContent({ isDark, setIsDark }: { isDark: boolean, setIsDark: (val: b
     return completedIds.includes(itemId);
   };
 
+  const resetAllToDefaults = () => {
+    triggerConfirm(
+      "Restaurar Conteúdo Original",
+      "ATENÇÃO: Você deseja redefinir todo o conteúdo local para os padrões originais de fábrica? Isso inclui todos os Temas, Doutrinas, Estudos, Dicionário com nomes bíblicos, Histórias, Curso Básico e os Atributos de Deus. Todos os tópicos excluídos serão restaurados.",
+      () => {
+        // Clear all item storages
+        localStorage.removeItem("escola_da_fe_themes");
+        localStorage.removeItem("escola_da_fe_names");
+        localStorage.removeItem("escola_da_fe_stories");
+        localStorage.removeItem("escola_da_fe_theology");
+        localStorage.removeItem("escola_da_fe_course");
+        localStorage.removeItem("escola_da_fe_deleted_ids");
+        
+        // Reset states to original arrays
+        setThemes(BIBLICAL_THEMES);
+        setNames(BIBLICAL_NAMES);
+        setStories(BIBLICAL_STORIES);
+        setTheologyTopics(THEOLOGY_TOPICS);
+        setCourseLessons(BASIC_COURSE);
+        
+        alert("O conteúdo original de fábrica foi restaurado com sucesso! O aplicativo será agora sincronizado.");
+        syncWithDatabase();
+      }
+    );
+  };
+
   const formatWhatsAppLink = (val: string) => {
     if (!val) return "#";
     const clean = val.replace(/\s+/g, "");
@@ -4975,7 +5340,7 @@ function AppContent({ isDark, setIsDark }: { isDark: boolean, setIsDark: (val: b
   return (
     <div className="min-h-screen bg-bg-page dark:bg-bg-dark transition-colors duration-500 selection:bg-accent/30 flex flex-col justify-between">
       <div className="w-full flex-grow">
-        <Navbar isDark={isDark} toggleDark={() => setIsDark(!isDark)} isAdmin={isAdmin} setIsAdmin={setIsAdmin} dbStatus={dbStatus} onSync={syncWithDatabase} supabaseConfigMissing={supabaseConfigMissing} />
+        <Navbar isDark={isDark} theme={theme} setTheme={setTheme} toggleDark={() => setTheme(isDark ? "light" : "dark")} isAdmin={isAdmin} setIsAdmin={setIsAdmin} dbStatus={dbStatus} onSync={syncWithDatabase} supabaseConfigMissing={supabaseConfigMissing} onRestoreDefaults={resetAllToDefaults} />
         <main className="pt-24 lg:pt-28 p-4 sm:p-8 lg:p-12 pb-32 lg:pb-28 max-w-[1920px] mx-auto">
           <AnimatePresence mode="wait">
             <Routes>
@@ -4985,6 +5350,7 @@ function AppContent({ isDark, setIsDark }: { isDark: boolean, setIsDark: (val: b
               <Route path="/historias" element={<Stories onSelectItem={handleSelectItem} stories={stories} setStories={setStories} isAdmin={isAdmin} triggerConfirm={triggerConfirm} />} />
               <Route path="/homens-deus" element={<HomensDeDeusView isAdmin={isAdmin} triggerConfirm={triggerConfirm} />} />
               <Route path="/teologia" element={<Theology onSelectItem={handleSelectItem} theologyTopics={theologyTopics} setTheologyTopics={setTheologyTopics} isAdmin={isAdmin} triggerConfirm={triggerConfirm} />} />
+              <Route path="/atributos" element={<AttributesOfGodView />} />
               <Route path="/curso" element={<Course onSelectItem={handleSelectItem} courseLessons={courseLessons} setCourseLessons={setCourseLessons} isAdmin={isAdmin} triggerConfirm={triggerConfirm} />} />
               <Route path="/comunidade" element={<Community isAdmin={isAdmin} triggerConfirm={triggerConfirm} />} />
               <Route path="/apoio" element={<ApoiaMissao supportDetails={supportDetails} setSupportDetails={setSupportDetails} isAdmin={isAdmin} />} />
@@ -5277,24 +5643,98 @@ function PoliciesModal({ isOpen, onClose, privacyText, termsText }: PoliciesModa
 }
 
 export default function App() {
+  const [theme, setTheme] = useState<"light" | "dark" | "system">(() => {
+    const saved = localStorage.getItem('theme');
+    if (saved === 'dark' || saved === 'light' || saved === 'system') {
+      return saved as "light" | "dark" | "system";
+    }
+    return 'system';
+  });
+
   const [isDark, setIsDark] = useState(() => {
     const saved = localStorage.getItem('theme');
-    return saved === 'dark';
+    if (saved === 'dark') return true;
+    if (saved === 'light') return false;
+    try {
+      return window.matchMedia('(prefers-color-scheme: dark)').matches;
+    } catch {
+      return false;
+    }
   });
 
   useEffect(() => {
-    if (isDark) {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
+    const applyTheme = () => {
+      let activeDark = false;
+      if (theme === 'dark') {
+        activeDark = true;
+      } else if (theme === 'light') {
+        activeDark = false;
+      } else {
+        try {
+          activeDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        } catch {
+          activeDark = false;
+        }
+      }
+
+      setIsDark(activeDark);
+      if (activeDark) {
+        document.documentElement.classList.add('dark');
+        document.documentElement.setAttribute('data-theme', 'dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+        document.documentElement.setAttribute('data-theme', 'light');
+      }
+
+      try {
+        const themeColorMeta = document.querySelector('meta[name="theme-color"]');
+        if (themeColorMeta) {
+          themeColorMeta.setAttribute('content', activeDark ? '#1a237e' : '#ffffff');
+        }
+      } catch (e) {
+        console.warn("Could not update viewport theme color metadata", e);
+      }
+    };
+
+    applyTheme();
+
+    if (theme === 'system') {
+      try {
+        const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+        const handleChange = (e: MediaQueryListEvent) => {
+          setIsDark(e.matches);
+          if (e.matches) {
+            document.documentElement.classList.add('dark');
+            document.documentElement.setAttribute('data-theme', 'dark');
+          } else {
+            document.documentElement.classList.remove('dark');
+            document.documentElement.setAttribute('data-theme', 'light');
+          }
+          try {
+            const themeColorMeta = document.querySelector('meta[name="theme-color"]');
+            if (themeColorMeta) {
+              themeColorMeta.setAttribute('content', e.matches ? '#1a237e' : '#ffffff');
+            }
+          } catch (err) {
+            console.warn("Could not handle dynamic system-change metadata shifts", err);
+          }
+        };
+        mediaQuery.addEventListener('change', handleChange);
+        return () => mediaQuery.removeEventListener('change', handleChange);
+      } catch (err) {
+        console.warn("System theme media query error", err);
+      }
     }
-  }, [isDark]);
+  }, [theme]);
+
+  const handleSetTheme = (newTheme: "light" | "dark" | "system") => {
+    setTheme(newTheme);
+    localStorage.setItem('theme', newTheme);
+  };
 
   return (
     <BrowserRouter>
-      <AppContent isDark={isDark} setIsDark={setIsDark} />
+      <AppContent isDark={isDark} theme={theme} setTheme={handleSetTheme} />
     </BrowserRouter>
   );
 }

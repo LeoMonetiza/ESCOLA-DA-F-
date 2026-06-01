@@ -66,6 +66,14 @@ export default function PWAController() {
           setSwRegistration(registration);
           console.log("[PWA] Service Worker registrado:", registration);
 
+          // If there is already a waiting worker, immediately show the update dialog
+          if (registration.waiting) {
+            setUpdateAvailable(true);
+          }
+
+          // Register automatic update check
+          registration.update().catch(() => {});
+
           // Listen for updates in background
           registration.addEventListener("updatefound", () => {
             const newWorker = registration.installing;
@@ -100,6 +108,76 @@ export default function PWAController() {
     };
   }, []);
 
+  // 5. Dynamic Deploy Auto-Detection (Vercel Deploy Checker matching /version.json)
+  useEffect(() => {
+    const checkVercelDeploy = async () => {
+      try {
+        // Query the live deploy version checker with a cache buster timestamp
+        const res = await fetch(`/version.json?t=${Date.now()}`, { cache: "no-store" });
+        if (!res.ok) return;
+        const data = await res.json();
+        const serverVersion = data.version;
+
+        if (!serverVersion) return;
+
+        const localVersion = localStorage.getItem("escola_da_fe_active_version");
+
+        // Initial setup on first run
+        if (!localVersion) {
+          localStorage.setItem("escola_da_fe_active_version", serverVersion);
+          console.log("[PWA] Inicializado rastreador de versão:", serverVersion);
+          return;
+        }
+
+        // If server version is greater/different than local, we have a new deploy!
+        if (localVersion !== serverVersion) {
+          console.log(`[PWA] Diferença de versão encontrada! Local: ${localVersion} | Servidor: ${serverVersion}`);
+          setUpdateAvailable(true);
+        }
+      } catch (err) {
+        console.warn("[PWA] Erro ao verificar a versão no servidor:", err);
+      }
+    };
+
+    // Trigger check immediately at startup
+    checkVercelDeploy();
+
+    // Trigger check when app becomes visible or focused (PWA resumed from standby)
+    const handleFocus = () => {
+      checkVercelDeploy();
+      if (swRegistration) {
+        swRegistration.update().catch(() => {});
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        checkVercelDeploy();
+        if (swRegistration) {
+          swRegistration.update().catch(() => {});
+        }
+      }
+    };
+
+    const handleBackOnline = () => {
+      checkVercelDeploy();
+    };
+
+    window.addEventListener("focus", handleFocus);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("online", handleBackOnline);
+
+    // Dynamic Interval checking: Poll the static version JSON every 30 seconds
+    const intervalId = setInterval(checkVercelDeploy, 30000);
+
+    return () => {
+      window.removeEventListener("focus", handleFocus);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("online", handleBackOnline);
+      clearInterval(intervalId);
+    };
+  }, [swRegistration]);
+
   const showToast = (message: string) => {
     setToastMessage(message);
     setTimeout(() => {
@@ -107,12 +185,45 @@ export default function PWAController() {
     }, 4000);
   };
 
-  // Skip waiting for update to take place
-  const handleUpdateApp = () => {
-    if (swRegistration && swRegistration.waiting) {
-      swRegistration.waiting.postMessage({ type: "SKIP_WAITING" });
-    } else {
-      // Fallback reload
+  // Skip waiting, purge caches, register new version token, and hard reload
+  const handleUpdateApp = async () => {
+    try {
+      console.log("[PWA] Executando renovação robusta de código e cache...");
+
+      // 1. Fetch current server version to update local registry
+      try {
+        const res = await fetch(`/version.json?t=${Date.now()}`, { cache: "no-store" });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.version) {
+            localStorage.setItem("escola_da_fe_active_version", data.version);
+          }
+        }
+      } catch (e) {
+        console.warn("[PWA] Falha ao sintonizar chave de versão:", e);
+      }
+
+      // 2. Clear entire browser service worker Cache Storage structure
+      if ("caches" in window) {
+        const keys = await caches.keys();
+        await Promise.all(keys.map(key => caches.delete(key)));
+        console.log("[PWA] Caches obsoletos eliminados.");
+      }
+
+      // 3. Command server worker to skipWaiting
+      if (swRegistration) {
+        if (swRegistration.waiting) {
+          swRegistration.waiting.postMessage({ type: "SKIP_WAITING" });
+          return; // The 'controllerchange' listener will issue window.location.reload()
+        }
+        // Fallback: if there was no waiting worker, unregister old registration and reload
+        await swRegistration.unregister();
+      }
+
+      // 4. Force hard reload with timestamp buster
+      window.location.href = `/?refresh=${Date.now()}`;
+    } catch (err) {
+      console.error("[PWA] Falha na invalidação estrutural, recarregando padrão:", err);
       window.location.reload();
     }
   };

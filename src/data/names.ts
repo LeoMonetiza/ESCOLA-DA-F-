@@ -425,9 +425,9 @@ export const BIBLICAL_NAMES = [
     content: "O irmão mais velho de Moisés e o primeiro Sumo Sacerdote de Israel. Embora tenha falhado algumas vezes, ele foi o porta-voz de Moisés diante do Faraó e o líder religioso que intercedia pelo povo através dos sacrifícios, prefigurando o trabalho do nosso Grande Sumo Sacerdote, Jesus." 
   },
   { 
-    name: "Miriã", 
-    meaning: "Amada", 
-    content: "Irmã de Moisés que vigiou seu cesto no rio Nilo e depois liderou o povo em louvor. Embora tenha tido um momento de rebeldia, sua vida é um exemplo de liderança e adoração vibrante, reconhecendo as maravilhas de Deus no meio da jornada rumo à liberdade final." 
+    name: "Enoque", 
+    meaning: "Dedicado (ou Iniciado)", 
+    content: "Enoque foi um dos personagens bíblicos de maior proximidade e intimidade com Deus no período antediluviano. A Escritura testifica sagradamente em Gênesis 5:24 que ele 'andou com Deus; e já não era, porque Deus o tomou para si'. Conhecido pela sua lealdade inabalável e santidade exemplar, Enoque agrada profundamente ao Senhor, sendo transladado diretamente sem experimentar a morte física (Hebreus 11:5)." 
   },
   { 
     name: "Calebe", 

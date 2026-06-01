@@ -83,10 +83,10 @@ export const BIBLICAL_ADS_POOL: AdTheme[] = [
 // --- Global Context / State Store for Ad Simulated Settings ---
 // We use localStorage to track statistics and if the user unlocked "PRO" (which disables ads to make the app more magical)
 export const getAdStats = () => {
-  if (typeof window === "undefined") return { views: 0, revenue: 0, isPro: false };
+  if (typeof window === "undefined") return { views: 0, revenue: 0, isPro: true };
   const views = Number(localStorage.getItem("sim_ad_views") || "0");
   const revenue = Number(localStorage.getItem("sim_ad_revenue") || "0");
-  const isPro = localStorage.getItem("sim_ad_is_pro") === "true";
+  const isPro = true; // Always true to skip repeating ads
   return { views, revenue, isPro };
 };
 

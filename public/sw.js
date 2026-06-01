@@ -1,6 +1,12 @@
-const CACHE_NAME = "escola-da-fe-cache-v3";
+const CACHE_VERSION = "escola-da-fe-v6.0.0";
 
-// Minimal static assets to pre-cache to provide instant initial shell load
+const CACHE_KEYS = {
+  static: `${CACHE_VERSION}-static`,
+  assets: `${CACHE_VERSION}-assets`,
+  images: `${CACHE_VERSION}-images`,
+  manifest: `${CACHE_VERSION}-manifest`
+};
+
 const PRECACHE_ASSETS = [
   "/",
   "/index.html",
@@ -8,88 +14,118 @@ const PRECACHE_ASSETS = [
   "/logo_pwa_icon.png"
 ];
 
-// Install event: Pre-cache basic offline assets
+// Install Event: Cache immediate shell resources and skip waiting instantly
 self.addEventListener("install", (event) => {
+  self.skipWaiting(); // Force active immediately without waiting for user to close tabs
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      console.log("[Service Worker] Pre-caching offline shell");
+    caches.open(CACHE_KEYS.static).then((cache) => {
+      console.log("[Service Worker] Pre-caching core shell assets");
       return cache.addAll(PRECACHE_ASSETS);
-    }).then(() => {
-      // Force immediate activation
-      return self.skipWaiting();
     })
   );
 });
 
-// Activate event: Clean up prior old caches
+// Activate Event: Sweep and delete all old cache categories to preserve storage health
 self.addEventListener("activate", (event) => {
+  const currentCacheNames = Object.values(CACHE_KEYS);
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
-        cacheNames.map((cache) => {
-          if (cache !== CACHE_NAME) {
-            console.log("[Service Worker] Cleaning old cache:", cache);
-            return caches.delete(cache);
+        cacheNames.map((cacheName) => {
+          if (!currentCacheNames.includes(cacheName)) {
+            console.log("[Service Worker] Purging outdated or faulty cache category:", cacheName);
+            return caches.delete(cacheName);
           }
         })
       );
     }).then(() => {
-      // Take control of all pages immediately
-      return self.clients.claim();
+      return self.clients.claim(); // Immediately control all open clients/tabs
     })
   );
 });
 
-// Fetch event: Intelligent caching strategy (Stale-While-Revalidate & Network fallback)
+// Fetch Event: Direct static requests, versioned cache matching, navigation fallback routing
 self.addEventListener("fetch", (event) => {
   const requestUrl = new URL(event.request.url);
 
-  // Skip caching non-GET requests (e.g. API POST requests to OpenAI/Gemini or third-party webhooks)
+  // Skip caching non-GET requests (e.g., API requests, DB mutations)
   if (event.request.method !== "GET") {
     return;
   }
 
-  // Skip browser extensions or other non-http/https protocols
-  if (!event.request.url.startsWith(self.location.origin) && !event.request.url.startsWith("http")) {
+  // Skip browser extensions or deep third-party non-HTTP/S calls
+  if (!event.request.url.startsWith("http")) {
     return;
   }
 
-  // For server-side AI endpoints, external API routes, or Supabase, fetch from network first, never cache
+  // API endpoints and Supabase: Network-first execution with offline message fallback, never cache
   if (requestUrl.pathname.startsWith("/api/") || requestUrl.hostname.includes("supabase")) {
     event.respondWith(
       fetch(event.request).catch(() => {
-        return new Response(JSON.stringify({ error: "Você está offline. Perguntas à IA requerem conexão de internet." }), {
-          headers: { "Content-Type": "application/json" }
-        });
+        return new Response(
+          JSON.stringify({ error: "Você está offline. Perguntas e sincronizações requerem conexão à internet." }),
+          { headers: { "Content-Type": "application/json" } }
+        );
       })
     );
     return;
   }
 
-  // Stale-While-Revalidate Strategy for site assets (js, css, images) and documents
+  // SPA Navigation fallback: All navigation request paths (like /teologia, /curso) receive the root index.html
+  // This avoids any 404 errors when deep routing or returning to the app from background.
+  if (event.request.mode === "navigate" || requestUrl.pathname.endsWith(".html") || !requestUrl.pathname.includes(".")) {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          if (response && response.status === 200) {
+            const clone = response.clone();
+            caches.open(CACHE_KEYS.static).then((cache) => {
+              cache.put(event.request, clone);
+            });
+          }
+          return response;
+        })
+        .catch(() => {
+          return caches.match("/index.html") || caches.match("/");
+        })
+    );
+    return;
+  }
+
+  // Categorize standard assets to split caches accordingly (Manifest vs Assets vs Images vs Base)
+  let selectedCacheName = CACHE_KEYS.static;
+  if (requestUrl.pathname.match(/\.(js|css)$/) || requestUrl.pathname.includes("/assets/")) {
+    selectedCacheName = CACHE_KEYS.assets;
+  } else if (requestUrl.pathname.match(/\.(png|jpg|jpeg|gif|svg|webp|ico)$/)) {
+    selectedCacheName = CACHE_KEYS.images;
+  } else if (requestUrl.pathname.endsWith("manifest.json")) {
+    selectedCacheName = CACHE_KEYS.manifest;
+  }
+
+  // Stale-While-Revalidate Strategy for files to keep boots instant while downloading the latest assets
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
-      // Serve cached answer immediately if available, but fetch updated copy in the background
-      const fetchPromise = fetch(event.request).then((networkResponse) => {
-        // Cache valid successful responses
-        if (networkResponse && networkResponse.status === 200 && networkResponse.type === "basic") {
-          const responseToCache = networkResponse.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseToCache);
-          });
-        }
-        return networkResponse;
-      }).catch((err) => {
-        console.warn("[Service Worker] Fetch failed, serving cached copy if exists: ", err);
-      });
+      // Direct network pull to update the cache in background
+      const fetchPromise = fetch(event.request, { cache: "no-cache" })
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const responseToCache = networkResponse.clone();
+            caches.open(selectedCacheName).then((cache) => {
+              cache.put(event.request, responseToCache);
+            });
+          }
+          return networkResponse;
+        })
+        .catch((err) => {
+          console.warn("[Service Worker] Offline fallback for asset:", requestUrl.pathname, err);
+        });
 
-      // Returns the cached file if found, otherwise waits for network fetching promise
       return cachedResponse || fetchPromise;
     })
   );
 });
 
-// Handle custom skip waiting message from app when an update is approved by the user
+// Event Listener for forced reload triggers from client
 self.addEventListener("message", (event) => {
   if (event.data && event.data.type === "SKIP_WAITING") {
     self.skipWaiting();
