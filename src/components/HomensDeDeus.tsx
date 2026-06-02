@@ -26,7 +26,8 @@ import {
   Eye,
   EyeOff,
   Megaphone,
-  Newspaper
+  Newspaper,
+  Star
 } from "lucide-react";
 import { cn } from "@/src/lib/utils";
 import { ThemeBanner } from "./SimulatedAds";
@@ -146,6 +147,7 @@ export default function HomensDeDeusView({
   const [selectedMan, setSelectedMan] = useState<HomemDeDeus | null>(null);
 
   const [isInBooklet, setIsInBooklet] = useState(false);
+  const [isFavorited, setIsFavorited] = useState(false);
   const [hiddenIds, setHiddenIds] = useState<string[]>(() => {
     try {
       const saved = localStorage.getItem("escola_da_fe_hidden_men_ids");
@@ -808,6 +810,56 @@ export default function HomensDeDeusView({
     window.addEventListener("booklet-updated", checkState);
     return () => window.removeEventListener("booklet-updated", checkState);
   }, [selectedMan]);
+
+  useEffect(() => {
+    const checkFavState = () => {
+      if (!selectedMan) {
+        setIsFavorited(false);
+        return;
+      }
+      try {
+        const saved = localStorage.getItem("escola_da_fe_favorites");
+        const favs = saved ? JSON.parse(saved) : [];
+        setIsFavorited(favs.some((f: any) => f.id === selectedMan.id));
+      } catch {
+        setIsFavorited(false);
+      }
+    };
+    checkFavState();
+
+    window.addEventListener("favorites-updated", checkFavState);
+    return () => window.removeEventListener("favorites-updated", checkFavState);
+  }, [selectedMan]);
+
+  const handleToggleFavorite = () => {
+    if (!selectedMan) return;
+    try {
+      const saved = localStorage.getItem("escola_da_fe_favorites");
+      let favs = saved ? JSON.parse(saved) : [];
+      const index = favs.findIndex((f: any) => f.id === selectedMan.id);
+      if (index > -1) {
+        favs.splice(index, 1);
+        setIsFavorited(false);
+      } else {
+        const favItem = {
+          id: selectedMan.id,
+          title: selectedMan.name,
+          description: `${selectedMan.birthAndDeath || ""} - ${selectedMan.era || ""}. ${selectedMan.mainLegacy || ""}`,
+          type: "homens-deus",
+          originalItem: {
+             ...selectedMan,
+             story: selectedMan.story
+          }
+        };
+        favs.push(favItem);
+        setIsFavorited(true);
+      }
+      localStorage.setItem("escola_da_fe_favorites", JSON.stringify(favs));
+      window.dispatchEvent(new CustomEvent("favorites-updated"));
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   // Admin Section State
   const [inputCode, setInputCode] = useState("");
@@ -1497,12 +1549,24 @@ export default function HomensDeDeusView({
                   </p>
                 </div>
 
-                <button 
-                  onClick={() => setSelectedMan(null)}
-                  className="p-2 bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white rounded-xl transition-colors z-10 shrink-0"
-                >
-                  <X size={18} />
-                </button>
+                <div className="flex items-center gap-2 z-10 shrink-0">
+                  <button 
+                    onClick={handleToggleFavorite}
+                    className={cn(
+                      "p-2 bg-white/5 hover:bg-white/10 transition-all flex items-center justify-center gap-1.5 cursor-pointer border border-transparent",
+                      isFavorited && "text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 border-amber-500/20"
+                    )}
+                    title={isFavorited ? "Remover dos Favoritos" : "Adicionar aos Favoritos"}
+                  >
+                    <Star size={18} fill={isFavorited ? "currentColor" : "none"} />
+                  </button>
+                  <button 
+                    onClick={() => setSelectedMan(null)}
+                    className="p-2 bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white rounded-xl transition-colors shrink-0"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
               </div>
 
               {/* Scrollable Story content */}

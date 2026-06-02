@@ -39,7 +39,12 @@ import {
   Database,
   Heart,
   Pencil,
-  Sparkles
+  Sparkles,
+  Upload,
+  Image,
+  Share2,
+  Star,
+  Bookmark
 } from "lucide-react";
 import { cn } from "@/src/lib/utils";
 import { BIBLICAL_THEMES, BIBLICAL_NAMES, BIBLICAL_STORIES, THEOLOGY_TOPICS, BASIC_COURSE } from "@/src/data/biblicalData";
@@ -49,6 +54,7 @@ import Community from "./components/Community";
 import PWAController from "./components/PWAController";
 import LivretoManager from "./components/LivretoManager";
 import AttributesOfGodView from "./components/AttributesOfGodView";
+import FavoritesView from "./components/FavoritesView";
 import { getSupabaseClient, checkSupabaseConfigExists } from "./lib/supabaseClient";
 import { optimizeItemContent } from "./lib/contentOptimizer";
 import { 
@@ -737,6 +743,7 @@ function StudyDetailModal({
 
   const location = useLocation();
   const [isInBooklet, setIsInBooklet] = useState(false);
+  const [isFavorited, setIsFavorited] = useState(false);
   const optimizedContent = optimizeItemContent(item, location.pathname);
 
   useEffect(() => {
@@ -754,6 +761,56 @@ function StudyDetailModal({
     window.addEventListener("booklet-updated", checkState);
     return () => window.removeEventListener("booklet-updated", checkState);
   }, [item]);
+
+  useEffect(() => {
+    const checkFavState = () => {
+      try {
+        const saved = localStorage.getItem("escola_da_fe_favorites");
+        const favs = saved ? JSON.parse(saved) : [];
+        setIsFavorited(favs.some((f: any) => f.id === (item.id || item.name)));
+      } catch {
+        setIsFavorited(false);
+      }
+    };
+    checkFavState();
+
+    window.addEventListener("favorites-updated", checkFavState);
+    return () => window.removeEventListener("favorites-updated", checkFavState);
+  }, [item]);
+
+  const handleToggleFavorite = () => {
+    try {
+      const saved = localStorage.getItem("escola_da_fe_favorites");
+      let favs = saved ? JSON.parse(saved) : [];
+      const itemKey = item.id || item.name;
+      const index = favs.findIndex((f: any) => f.id === itemKey);
+      if (index > -1) {
+        favs.splice(index, 1);
+        setIsFavorited(false);
+      } else {
+        let itemType = "estudo";
+        if (item.meaning) itemType = "dicionario";
+        else if (item.lesson !== undefined) itemType = "curso";
+        else if (item.era) itemType = "homens-deus";
+        else if (location.pathname === "/teologia" || item.resumo || item.referencias_biblicas) itemType = "teologia";
+        else if (location.pathname === "/historias" || item.id?.startsWith("historia") || item.id?.startsWith("story")) itemType = "historia";
+
+        const favItem = {
+          id: itemKey,
+          title: item.title || item.name,
+          description: item.description || item.meaning || (item.lesson ? `Módulo ${item.modulo_titulo || ''} - Lição ${item.lesson}` : item.era || "Estudo bíblico prático"),
+          type: itemType,
+          originalItem: item
+        };
+        favs.push(favItem);
+        setIsFavorited(true);
+      }
+      localStorage.setItem("escola_da_fe_favorites", JSON.stringify(favs));
+      window.dispatchEvent(new CustomEvent("favorites-updated"));
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   const handleToggleBooklet = () => {
     window.dispatchEvent(new CustomEvent("add-to-booklet", {
@@ -783,9 +840,21 @@ function StudyDetailModal({
             <h3 className="text-xl sm:text-2xl md:text-3xl font-black mb-1.5 tracking-tight leading-tight">{item.title || item.name}</h3>
             <p className="text-accent text-xs font-black uppercase tracking-wider">{item.description || item.meaning || 'Estudo Bíblico'}</p>
           </div>
-          <button onClick={onClose} className="p-2 bg-white/10 rounded-xl hover:bg-white/20 transition-colors z-10 shrink-0">
-            <X size={18} />
-          </button>
+          <div className="flex items-center gap-2 z-10 shrink-0">
+            <button 
+              onClick={handleToggleFavorite}
+              className={cn(
+                "p-2 bg-white/10 rounded-xl hover:bg-white/20 transition-all flex items-center justify-center gap-1.5 cursor-pointer border border-transparent",
+                isFavorited && "text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 border-amber-500/20"
+              )}
+              title={isFavorited ? "Remover dos Favoritos" : "Adicionar aos Favoritos"}
+            >
+              <Star size={18} fill={isFavorited ? "currentColor" : "none"} />
+            </button>
+            <button onClick={onClose} className="p-2 bg-white/10 rounded-xl hover:bg-white/20 transition-colors shrink-0">
+              <X size={18} />
+            </button>
+          </div>
           <div className="absolute top-0 right-0 p-12 opacity-5 pointer-events-none">
             <Library size={140} />
           </div>
@@ -911,6 +980,7 @@ function Navbar({
     { name: "Atributos", path: "/atributos", icon: <Sparkles size={20} /> },
     { name: "Curso", path: "/curso", icon: <GraduationCap size={20} /> },
     { name: "Mural", path: "/comunidade", icon: <MessageCircle size={20} /> },
+    { name: "Favoritos", path: "/favoritos", icon: <Star size={20} className="text-amber-500" /> },
     { name: "Apoia a Missão", path: "/apoio", icon: <Heart size={20} className="text-pink-500 animate-pulse" /> },
   ];
 
@@ -950,26 +1020,156 @@ function Navbar({
   return (
     <>
       {/* Sleek integrated Top Navbar for both Mobile and Desktop */}
-      <header className="fixed top-0 left-0 right-0 h-20 bg-white dark:bg-secondary text-slate-800 dark:text-white z-50 px-6 sm:px-8 lg:px-12 flex items-center justify-between border-b border-slate-100 dark:border-white/5 shadow-md">
-        {/* Logo and Branding */}
-        <div className="flex items-center gap-2 sm:gap-4 shrink-0">
-          <div className="w-8 h-8 sm:w-10 sm:h-10 bg-accent rounded-lg sm:rounded-xl flex items-center justify-center rotate-6 shadow-xl shadow-accent/20">
-            <BookOpen size={16} className="text-secondary sm:w-5 sm:h-5" />
+      <header className="fixed top-0 left-0 right-0 h-20 lg:h-auto lg:min-h-[132px] bg-white dark:bg-secondary text-slate-800 dark:text-white z-50 px-6 sm:px-8 lg:px-12 flex flex-col justify-center py-3 lg:py-4 border-b border-slate-100 dark:border-white/5 shadow-md transition-all duration-300">
+        <div className="flex items-center justify-between w-full">
+          {/* Logo and Branding */}
+          <div className="flex items-center gap-2 sm:gap-4 shrink-0">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-accent rounded-lg sm:rounded-xl flex items-center justify-center rotate-6 shadow-xl shadow-accent/20">
+              <BookOpen size={16} className="text-secondary sm:w-5 sm:h-5" />
+            </div>
+            <div>
+              <h1 className="text-base sm:text-xl font-black tracking-tighter leading-none text-slate-900 dark:text-white">Escola da Fé</h1>
+              <p className="hidden sm:block text-[10px] sm:text-xs text-[#cfaf72] font-black uppercase tracking-[0.2em] opacity-80 mt-1">Teologia & Bíblia</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-base sm:text-xl font-black tracking-tighter leading-none text-slate-900 dark:text-white">Escola da Fé</h1>
-            <p className="hidden sm:block text-[10px] sm:text-xs text-[#cfaf72] font-black uppercase tracking-[0.2em] opacity-80 mt-1">Teologia & Bíblia</p>
+
+          {/* Right side actions (Supabase Badge, Theme toggle and Admin Trigger) */}
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            {/* Supabase Connection Status Indicator - ADMIN ONLY */}
+            {isAdmin && dbStatus === "connecting" && (
+              <button
+                type="button"
+                onClick={onSync}
+                className="flex items-center gap-1.5 px-2 py-1.5 sm:px-3 sm:py-1.5 bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 font-bold font-mono text-[9px] sm:text-[10px] uppercase rounded-xl hover:bg-yellow-500/20 transition-all animate-pulse shrink-0 cursor-pointer"
+                title="Buscando lições e atualizações..."
+              >
+                <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-yellow-400 rounded-full animate-ping shrink-0" />
+                <span className="hidden sm:inline">A carregar...</span>
+                <span className="sm:hidden">Carregando...</span>
+              </button>
+            )}
+
+            {isAdmin && dbStatus === "online" && (
+              <button
+                type="button"
+                onClick={onSync}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 sm:px-3 sm:py-1.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-bold font-mono text-[9px] sm:text-[10px] uppercase rounded-xl hover:bg-emerald-500/20 transition-all shrink-0 cursor-pointer shadow-lg shadow-emerald-500/5 active:scale-95 duration-150"
+                title="Conectado à Internet: Dados sincronizados em tempo real (Clique para atualizar)"
+              >
+                <div className="w-1.5 h-1.5 bg-emerald-400 rounded-full shrink-0" />
+                <span className="hidden sm:inline">Servidor Online ✓</span>
+                <span className="sm:hidden">Conectado</span>
+              </button>
+            )}
+
+            {isAdmin && dbStatus === "offline" && (
+              <button
+                type="button"
+                onClick={onSync}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 sm:px-3 sm:py-1.5 bg-red-500/10 border border-red-500/20 text-red-500 font-bold font-mono text-[9px] sm:text-[10px] uppercase rounded-xl hover:bg-red-500/20 transition-all shrink-0 cursor-pointer font-black active:scale-95 duration-150"
+                title={supabaseConfigMissing ? "Trabalhando de forma local offline!" : "Modo Offline ou sem rede. Clique para tentar reconectar."}
+              >
+                <div className="w-1.5 h-1.5 bg-red-500 rounded-full shrink-0 animate-pulse" />
+                <span className="hidden sm:inline">{supabaseConfigMissing ? "Modo Offline" : "Modo Offline ↻"}</span>
+                <span className="sm:hidden">Offline</span>
+              </button>
+            )}
+
+            {/* Theme Toggler for Desktop & Mobile (Cycling through Light/Dark/System) */}
+            <button 
+              onClick={handleThemeShiftCycle}
+              className="flex items-center gap-1 p-2.5 bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5 hover:bg-slate-200 dark:hover:bg-white/10 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white rounded-xl transition-all cursor-pointer"
+              title={
+                theme === "light" 
+                  ? "Tema Ativo: Claro (Clique para Escuro)" 
+                  : theme === "dark" 
+                  ? "Tema Ativo: Escuro (Clique para Sistema)" 
+                  : "Tema Ativo: Sistema (Seguindo dispositivo - Clique para Claro)"
+              }
+            >
+              {theme === "light" && <Sun size={18} className="text-amber-500" />}
+              {theme === "dark" && <Moon size={18} className="text-accent" />}
+              {theme === "system" && (
+                <div className="flex items-center gap-1">
+                  <Monitor size={18} className="text-blue-500 dark:text-blue-400" />
+                  <span className="text-[10px] font-black uppercase text-blue-500 dark:text-blue-400 hidden sm:inline tracking-wider bg-blue-500/10 px-1 py-0.5 rounded-md">Auto</span>
+                </div>
+              )}
+            </button>
+
+            {/* Admin section in Desktop Horizontal Navbar */}
+            <div className="hidden lg:block">
+              {isAdmin ? (
+                <div className="flex items-center gap-2 bg-emerald-950/40 border border-emerald-500/30 rounded-xl px-4 py-2">
+                  <span className="text-xs font-black uppercase tracking-widest text-[#cfaf72]">ADMIN</span>
+                  {onRestoreDefaults && (
+                    <button 
+                      onClick={onRestoreDefaults}
+                      className="px-3 py-1 bg-amber-500 hover:bg-amber-400 text-slate-900 font-black text-xs rounded-lg transition-all uppercase tracking-wider"
+                      title="Restaurar todo o conteúdo original que veio por padrão de fábrica no aplicativo"
+                    >
+                      Restaurar Conteúdo
+                    </button>
+                  )}
+                  <button 
+                    onClick={handleAdminLogout}
+                    className="px-3 py-1 bg-emerald-500 hover:bg-emerald-400 text-[#1A237E] font-black text-xs rounded-lg transition-all uppercase tracking-wider"
+                  >
+                    Sair
+                  </button>
+                </div>
+              ) : (
+                <div>
+                  {showAdminLogin ? (
+                    <form onSubmit={handleAdminSubmit} className="flex items-center gap-1.5 bg-slate-100 dark:bg-white/5 p-1 rounded-xl border border-slate-200 dark:border-white/5">
+                      <input 
+                        type="password" 
+                        value={adminCodeInput}
+                        onChange={(e) => setAdminCodeInput(e.target.value)}
+                        placeholder="Código..."
+                        className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 text-slate-800 dark:text-slate-100 text-xs py-1.5 px-3 rounded-lg focus:outline-none focus:border-accent w-28 text-center placeholder:text-xs"
+                      />
+                      <button 
+                        type="submit"
+                        className="py-1.5 px-2.5 bg-accent hover:bg-white text-secondary font-black text-xs rounded-lg transition-colors"
+                      >
+                        OK
+                      </button>
+                      <button 
+                        type="button"
+                        onClick={() => { setShowAdminLogin(false); setErrorMsg(""); }}
+                        className="text-slate-400 hover:text-white text-xs px-1"
+                      >
+                        ✕
+                      </button>
+                    </form>
+                  ) : (
+                    <button 
+                      onClick={() => setShowAdminLogin(true)}
+                      className="text-xs font-black tracking-widest uppercase text-slate-500 dark:text-slate-400 hover:text-accent px-3 py-2 hover:bg-white/5 rounded-xl transition-all"
+                    >
+                      🔑 ADMIN
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Mobile menu toggle */}
+            <button onClick={() => setIsOpen(!isOpen)} className="lg:hidden p-2.5 bg-slate-100 dark:bg-white/10 rounded-xl hover:bg-slate-200 dark:hover:bg-white/15 transition-all text-slate-700 dark:text-white">
+              {isOpen ? <X size={20} /> : <Menu size={20} />}
+            </button>
           </div>
         </div>
 
-        {/* Desktop Navigation Links - Tightly packed and beautifully padded to fit all tabs */}
-        <div className="hidden lg:flex items-center gap-1 xl:gap-1.5 mx-auto px-4 max-w-full overflow-x-auto scrollbar-hide">
+        {/* Desktop Navigation Links - Fully visible, horizontally centered & wrapping smoothly as row 2 on computer screens so nothing is ever hidden */}
+        <div className="hidden lg:flex items-center justify-center flex-wrap gap-1.5 xl:gap-2.5 w-full mt-3 border-t border-slate-200/40 dark:border-white/5 pt-3 overflow-visible">
           {navItems.map((item) => (
             <Link 
               key={item.path} 
               to={item.path}
               className={cn(
-                "flex items-center gap-1.5 px-2.5 py-2 xl:px-3 xl:py-2.5 rounded-xl font-bold transition-all duration-300 group text-[11px] xl:text-xs 2xl:text-sm tracking-tight xl:tracking-wide shrink-0",
+                "flex items-center gap-2 px-3 py-2 rounded-xl font-bold transition-all duration-300 group text-[11px] xl:text-[12px] 2xl:text-[13px] tracking-tight shrink-0",
                 location.pathname === item.path 
                   ? "bg-slate-100 dark:bg-white/10 text-secondary dark:text-white shadow-md shadow-black/5" 
                   : "text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-secondary dark:hover:text-white"
@@ -979,139 +1179,11 @@ function Navbar({
                 "transition-transform group-hover:scale-110 shrink-0",
                 location.pathname === item.path ? "text-[#cfaf72]" : "text-slate-400 group-hover:text-secondary dark:group-hover:text-white"
               )}>
-                {React.cloneElement(item.icon as React.ReactElement, { size: 16 })}
+                {React.cloneElement(item.icon as React.ReactElement, { size: 14 })}
               </span>
               {item.name}
             </Link>
           ))}
-        </div>
-
-        {/* Right side actions (Supabase Badge, Theme toggle and Admin Trigger) */}
-        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-          {/* Supabase Connection Status Indicator - ADMIN ONLY */}
-          {isAdmin && dbStatus === "connecting" && (
-            <button
-              type="button"
-              onClick={onSync}
-              className="flex items-center gap-1.5 px-2 py-1.5 sm:px-3 sm:py-1.5 bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 font-bold font-mono text-[9px] sm:text-[10px] uppercase rounded-xl hover:bg-yellow-500/20 transition-all animate-pulse shrink-0 cursor-pointer"
-              title="Sincronizando com Supabase..."
-            >
-              <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-yellow-400 rounded-full animate-ping shrink-0" />
-              <span className="hidden sm:inline">Sincronizando</span>
-              <span className="sm:hidden">Sinc...</span>
-            </button>
-          )}
-
-          {isAdmin && dbStatus === "online" && (
-            <button
-              type="button"
-              onClick={onSync}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 sm:px-3 sm:py-1.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-bold font-mono text-[9px] sm:text-[10px] uppercase rounded-xl hover:bg-emerald-500/20 transition-all shrink-0 cursor-pointer shadow-lg shadow-emerald-500/5 active:scale-95 duration-150"
-              title="Dispositivo Online: Sincronizado com Supabase (Clique p/ atualizar)"
-            >
-              <div className="w-1.5 h-1.5 bg-emerald-400 rounded-full shrink-0" />
-              <span className="hidden sm:inline">Supabase Online</span>
-              <span className="sm:hidden">Online</span>
-            </button>
-          )}
-
-          {isAdmin && dbStatus === "offline" && (
-            <button
-              type="button"
-              onClick={onSync}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 sm:px-3 sm:py-1.5 bg-red-500/10 border border-red-500/20 text-red-500 font-bold font-mono text-[9px] sm:text-[10px] uppercase rounded-xl hover:bg-red-500/20 transition-all shrink-0 cursor-pointer font-black active:scale-95 duration-150"
-              title={supabaseConfigMissing ? "Configuração Supabase ausente! Nenhuma Chave ou URL encontrada." : "Offline ou erro ao conectar. Clique para tentar reconectar."}
-            >
-              <div className="w-1.5 h-1.5 bg-red-500 rounded-full shrink-0 animate-pulse" />
-              <span className="hidden sm:inline">{supabaseConfigMissing ? "Configuração Supabase ausente" : "Offline ↻"}</span>
-              <span className="sm:hidden">{supabaseConfigMissing ? "Sem Config" : "Offline"}</span>
-            </button>
-          )}
-
-          {/* Theme Toggler for Desktop & Mobile (Cycling through Light/Dark/System) */}
-          <button 
-            onClick={handleThemeShiftCycle}
-            className="flex items-center gap-1 p-2.5 bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5 hover:bg-slate-200 dark:hover:bg-white/10 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white rounded-xl transition-all cursor-pointer"
-            title={
-              theme === "light" 
-                ? "Tema Ativo: Claro (Clique para Escuro)" 
-                : theme === "dark" 
-                ? "Tema Ativo: Escuro (Clique para Sistema)" 
-                : "Tema Ativo: Sistema (Seguindo dispositivo - Clique para Claro)"
-            }
-          >
-            {theme === "light" && <Sun size={18} className="text-amber-500" />}
-            {theme === "dark" && <Moon size={18} className="text-accent" />}
-            {theme === "system" && (
-              <div className="flex items-center gap-1">
-                <Monitor size={18} className="text-blue-500 dark:text-blue-400" />
-                <span className="text-[10px] font-black uppercase text-blue-500 dark:text-blue-400 hidden sm:inline tracking-wider bg-blue-500/10 px-1 py-0.5 rounded-md">Auto</span>
-              </div>
-            )}
-          </button>
-
-          {/* Admin section in Desktop Horizontal Navbar */}
-          <div className="hidden lg:block">
-            {isAdmin ? (
-              <div className="flex items-center gap-2 bg-emerald-950/40 border border-emerald-500/30 rounded-xl px-4 py-2">
-                <span className="text-xs font-black uppercase tracking-widest text-[#cfaf72]">ADMIN</span>
-                {onRestoreDefaults && (
-                  <button 
-                    onClick={onRestoreDefaults}
-                    className="px-3 py-1 bg-amber-500 hover:bg-amber-400 text-slate-900 font-black text-xs rounded-lg transition-all uppercase tracking-wider"
-                    title="Restaurar todo o conteúdo original que veio por padrão de fábrica no aplicativo"
-                  >
-                    Restaurar Conteúdo
-                  </button>
-                )}
-                <button 
-                  onClick={handleAdminLogout}
-                  className="px-3 py-1 bg-emerald-500 hover:bg-emerald-400 text-[#1A237E] font-black text-xs rounded-lg transition-all uppercase tracking-wider"
-                >
-                  Sair
-                </button>
-              </div>
-            ) : (
-              <div>
-                {showAdminLogin ? (
-                  <form onSubmit={handleAdminSubmit} className="flex items-center gap-1.5 bg-slate-100 dark:bg-white/5 p-1 rounded-xl border border-slate-200 dark:border-white/5">
-                    <input 
-                      type="password" 
-                      value={adminCodeInput}
-                      onChange={(e) => setAdminCodeInput(e.target.value)}
-                      placeholder="Código..."
-                      className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 text-slate-800 dark:text-slate-100 text-xs py-1.5 px-3 rounded-lg focus:outline-none focus:border-accent w-28 text-center placeholder:text-xs"
-                    />
-                    <button 
-                      type="submit"
-                      className="py-1.5 px-2.5 bg-accent hover:bg-white text-secondary font-black text-xs rounded-lg transition-colors"
-                    >
-                      OK
-                    </button>
-                    <button 
-                      type="button"
-                      onClick={() => { setShowAdminLogin(false); setErrorMsg(""); }}
-                      className="text-slate-400 hover:text-white text-xs px-1"
-                    >
-                      ✕
-                    </button>
-                  </form>
-                ) : (
-                  <button 
-                    onClick={() => setShowAdminLogin(true)}
-                    className="text-xs font-black tracking-widest uppercase text-slate-500 dark:text-slate-400 hover:text-accent px-3 py-2 hover:bg-white/5 rounded-xl transition-all"
-                  >
-                    🔑 ADMIN
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Mobile menu toggle */}
-          <button onClick={() => setIsOpen(!isOpen)} className="lg:hidden p-2.5 bg-slate-100 dark:bg-white/10 rounded-xl hover:bg-slate-200 dark:hover:bg-white/15 transition-all text-slate-700 dark:text-white">
-            {isOpen ? <X size={20} /> : <Menu size={20} />}
-          </button>
         </div>
       </header>
 
@@ -1405,12 +1477,13 @@ function Home({
   setPrivacyText: React.Dispatch<React.SetStateAction<string>>;
   termsText: string;
   setTermsText: React.Dispatch<React.SetStateAction<string>>;
-  supportDetails: { banco: string; titular: string; conta: string; iban: string; transferencia: string };
-  setSupportDetails: React.Dispatch<React.SetStateAction<{ banco: string; titular: string; conta: string; iban: string; transferencia: string }>>;
+  supportDetails: { banco: string; titular: string; conta: string; iban: string; transferencia: string; appLink?: string };
+  setSupportDetails: React.Dispatch<React.SetStateAction<{ banco: string; titular: string; conta: string; iban: string; transferencia: string; appLink?: string }>>;
 }) {
   const [newTitle, setNewTitle] = useState("");
   const [newMessage, setNewMessage] = useState("");
   const [newImageUrl, setNewImageUrl] = useState("");
+  const [homeImgSourceMode, setHomeImgSourceMode] = useState<"upload" | "url">("upload");
   const [newType, setNewType] = useState("notification"); // "notification" | "publication" | "alert" | "teaching"
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -1463,7 +1536,11 @@ function Home({
           autor: "Lemos Faya de Arcanjo",
           imagem_url: newImageUrl
         })
-      }).catch(err => console.warn("Erro ao salvar postagem via API imediatamente:", err));
+      })
+      .then(() => {
+        window.dispatchEvent(new CustomEvent("refresh-announcements"));
+      })
+      .catch(err => console.warn("Erro ao salvar postagem via API imediatamente:", err));
 
       setEditingId(null);
       setNewTitle("");
@@ -1495,7 +1572,11 @@ function Home({
           autor: "Lemos Faya de Arcanjo",
           imagem_url: newNotice.imageUrl
         })
-      }).catch(err => console.warn("Erro ao salvar postagem via API imediatamente:", err));
+      })
+      .then(() => {
+        window.dispatchEvent(new CustomEvent("refresh-announcements"));
+      })
+      .catch(err => console.warn("Erro ao salvar postagem via API imediatamente:", err));
 
       setNewTitle("");
       setNewMessage("");
@@ -1514,7 +1595,11 @@ function Home({
         setAnnouncements(prev => prev.filter(a => a.id !== id));
         fetch(`/api/db/postagens/${id}`, {
           method: "DELETE"
-        }).catch(err => console.warn("Erro ao deletar postagem via API:", err));
+        })
+        .then(() => {
+          window.dispatchEvent(new CustomEvent("refresh-announcements"));
+        })
+        .catch(err => console.warn("Erro ao deletar postagem via API:", err));
 
         try {
           const currentDeleted = JSON.parse(localStorage.getItem("escola_da_fe_deleted_ids") || "[]");
@@ -1535,6 +1620,7 @@ function Home({
     { label: "Nomes Bíblicos", count: "100+", icon: <Search size={24} />, color: "bg-blue-500", path: "/dicionario" },
     { label: "Lugares & Biografias", count: "50+", icon: <MapPin size={24} />, color: "bg-purple-500", path: "/historias" },
     { label: "Lições do Curso", count: "Completo", icon: <GraduationCap size={24} />, color: "bg-emerald-500", path: "/curso" },
+    { label: "Os Meus Favoritos", count: "Caderno ⭐", icon: <Star size={24} className="text-[#cfaf72] fill-[#cfaf72]" />, color: "bg-[#0b132b] dark:bg-[#1C2541]/80", path: "/favoritos" },
     { label: "Apoia a Missão", count: "Ajude 💙", icon: <Heart size={24} />, color: "bg-pink-500 animate-pulse", path: "/apoio" },
   ];
 
@@ -1640,14 +1726,119 @@ function Home({
             </div>
             
             <div>
-              <label className="text-xs font-black uppercase text-slate-400 dark:text-slate-500 tracking-wider block mb-1">URL da Imagem Ilustrativa (Opcional)</label>
-              <input
-                type="url"
-                value={newImageUrl}
-                onChange={(e) => setNewImageUrl(e.target.value)}
-                placeholder="Ex: https://images.unsplash.com/photo-... (deixe vazio se não houver imagem)"
-                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 py-3 px-4 rounded-xl focus:outline-none focus:border-accent text-sm font-semibold"
-              />
+              <label className="text-xs font-black uppercase text-slate-400 dark:text-slate-500 tracking-wider block mb-1">Imagem Ilustrativa (Upload de Foto ou Link)</label>
+              
+              <div className="space-y-3">
+                {/* Mode Selector Tabs */}
+                <div className="grid grid-cols-2 gap-2 bg-slate-100 dark:bg-slate-900/60 p-1 rounded-xl">
+                  <button
+                    type="button"
+                    onClick={() => setHomeImgSourceMode("upload")}
+                    className={cn(
+                      "py-2 text-xs font-black rounded-lg transition-all",
+                      homeImgSourceMode === "upload" 
+                        ? "bg-white dark:bg-slate-800 text-[#cfaf72] shadow-sm" 
+                        : "text-slate-500 dark:text-slate-400 hover:text-slate-700"
+                    )}
+                  >
+                    📁 Enviar Foto do Aparelho
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setHomeImgSourceMode("url")}
+                    className={cn(
+                      "py-2 text-xs font-black rounded-lg transition-all",
+                      homeImgSourceMode === "url" 
+                        ? "bg-white dark:bg-slate-800 text-[#cfaf72] shadow-sm" 
+                        : "text-slate-500 dark:text-slate-400 hover:text-slate-700"
+                    )}
+                  >
+                    🔗 Link da Internet (URL)
+                  </button>
+                </div>
+
+                {homeImgSourceMode === "upload" ? (
+                  <div 
+                    className="border-2 border-dashed border-slate-200 dark:border-slate-700 hover:border-[#cfaf72] rounded-2xl p-4 transition text-center cursor-pointer relative bg-slate-50/50 dark:bg-slate-900/30"
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      const file = e.dataTransfer.files?.[0];
+                      if (file) {
+                        if (file.size > 2 * 1024 * 1024) {
+                          alert("A imagem é muito grande. Escolha uma foto de até 2MB para desempenho ideal.");
+                          return;
+                        }
+                        const reader = new FileReader();
+                        reader.onloadend = () => {
+                          setNewImageUrl(reader.result as string);
+                        };
+                        reader.readAsDataURL(file);
+                      }
+                    }}
+                  >
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          if (file.size > 2 * 1024 * 1024) {
+                            alert("A imagem é muito grande. Escolha uma foto de até 2MB para desempenho ideal.");
+                            return;
+                          }
+                          const reader = new FileReader();
+                          reader.onloadend = () => {
+                            setNewImageUrl(reader.result as string);
+                          };
+                          reader.readAsDataURL(file);
+                        }
+                      }}
+                    />
+                    <div className="flex flex-col items-center justify-center space-y-1.5 py-2">
+                      <Upload size={20} className="text-[#cfaf72]" />
+                      <p className="text-xs font-bold text-slate-700 dark:text-slate-300">Selecione uma imagem ou arraste-a aqui</p>
+                      <p className="text-[10px] uppercase tracking-wider text-slate-400">Até 2MB para carregar diretamente no banco</p>
+                    </div>
+                  </div>
+                ) : (
+                  <input
+                    type="url"
+                    value={newImageUrl.startsWith("data:") ? "" : newImageUrl}
+                    onChange={(e) => setNewImageUrl(e.target.value)}
+                    placeholder="Ex: https://images.unsplash.com/photo-... (deixe vazio se não houver imagem)"
+                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 py-3 px-4 rounded-xl focus:outline-none focus:border-accent text-sm font-semibold"
+                  />
+                )}
+
+                {/* Thumbnail Preview Area */}
+                {newImageUrl && (
+                  <div className="p-3 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-white/5 flex items-center gap-3">
+                    <div className="w-16 h-12 rounded-lg overflow-hidden bg-slate-900 border border-slate-200 dark:border-white/10 shrink-0">
+                      <img 
+                        src={newImageUrl} 
+                        alt="Pré-visualização" 
+                        className="w-full h-full object-cover" 
+                        referrerPolicy="no-referrer"
+                      />
+                    </div>
+                    <div className="flex-grow min-w-0">
+                      <p className="text-[10px] font-black uppercase text-[#cfaf72]">Foto Carregada com Sucesso</p>
+                      <p className="text-xs text-slate-500 font-mono truncate">
+                        {newImageUrl.startsWith("data:") ? "Imagem local em Base64" : newImageUrl}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setNewImageUrl("")}
+                      className="p-1 px-2.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 text-xs font-extrabold uppercase rounded-lg transition shrink-0"
+                    >
+                      Limpar
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="flex gap-3">
@@ -1951,18 +2142,8 @@ function Home({
 
           {/* DADOS DE APOIO À MISSÃO - CONFIGURATIONS BLOCK */}
           <div className="space-y-4 pt-4">
-            <h4 className="text-xs font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">2.5. Dados para Apoio à Missão (Aba Apoia a Missão)</h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-card-light dark:bg-card-dark p-6 rounded-2xl border border-border-light dark:border-border-dark shadow-sm">
-              <div className="space-y-2">
-                <label className="text-xs font-black text-heading uppercase tracking-wider block">🏦 Nome do Banco</label>
-                <input
-                  type="text"
-                  value={supportDetails.banco}
-                  onChange={(e) => setSupportDetails((prev: any) => ({ ...prev, banco: e.target.value }))}
-                  placeholder="Exemplo: Banco BFA"
-                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 py-3.5 px-5 rounded-2xl focus:outline-none focus:border-accent text-sm font-semibold"
-                />
-              </div>
+            <h4 className="text-xs font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">2.5. Dados para Apoio à Missão e Partilha (Aba Apoia a Missão)</h4>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 bg-card-light dark:bg-card-dark p-6 rounded-2xl border border-border-light dark:border-border-dark shadow-sm">
               <div className="space-y-2">
                 <label className="text-xs font-black text-heading uppercase tracking-wider block">👤 Titular da Conta</label>
                 <input
@@ -1974,32 +2155,22 @@ function Home({
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-xs font-black text-heading uppercase tracking-wider block">🔢 Número de Conta</label>
-                <input
-                  type="text"
-                  value={supportDetails.conta}
-                  onChange={(e) => setSupportDetails((prev: any) => ({ ...prev, conta: e.target.value }))}
-                  placeholder="Número de conta bancária"
-                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 py-3.5 px-5 rounded-2xl focus:outline-none focus:border-accent text-sm font-semibold"
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-xs font-black text-heading uppercase tracking-wider block">📱 Número p/ Transferência / Multicaixa</label>
-                <input
-                  type="text"
-                  value={supportDetails.transferencia}
-                  onChange={(e) => setSupportDetails((prev: any) => ({ ...prev, transferencia: e.target.value }))}
-                  placeholder="Telemóvel ou número de transferência"
-                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 py-3.5 px-5 rounded-2xl focus:outline-none focus:border-accent text-sm font-semibold"
-                />
-              </div>
-              <div className="space-y-2 md:col-span-2">
                 <label className="text-xs font-black text-heading uppercase tracking-wider block">📄 Código IBAN</label>
                 <input
                   type="text"
                   value={supportDetails.iban}
                   onChange={(e) => setSupportDetails((prev: any) => ({ ...prev, iban: e.target.value }))}
                   placeholder="IBAN completo"
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 py-3.5 px-5 rounded-2xl focus:outline-none focus:border-accent text-sm font-semibold"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-black text-heading uppercase tracking-wider block">🔗 Link Oficial do Aplicativo</label>
+                <input
+                  type="text"
+                  value={supportDetails.appLink || ""}
+                  onChange={(e) => setSupportDetails((prev: any) => ({ ...prev, appLink: e.target.value }))}
+                  placeholder="Ex: https://escoladafe.com"
                   className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 py-3.5 px-5 rounded-2xl focus:outline-none focus:border-accent text-sm font-semibold"
                 />
               </div>
@@ -2018,11 +2189,9 @@ function Home({
                       { chave: "facebook", valor: socialLinks.facebook || "" },
                       { chave: "privacy_text", valor: privacyText || "" },
                       { chave: "terms_text", valor: termsText || "" },
-                      { chave: "support_banco", valor: supportDetails.banco || "" },
                       { chave: "support_titular", valor: supportDetails.titular || "" },
-                      { chave: "support_conta", valor: supportDetails.conta || "" },
-                      { chave: "support_transferencia", valor: supportDetails.transferencia || "" },
-                      { chave: "support_iban", valor: supportDetails.iban || "" }
+                      { chave: "support_iban", valor: supportDetails.iban || "" },
+                      { chave: "support_app_link", valor: (supportDetails as any).appLink || "" }
                     ];
                     const res = await fetch("/api/db/config/save", {
                       method: "POST",
@@ -2030,17 +2199,17 @@ function Home({
                       body: JSON.stringify(payload)
                     });
                     if (res.ok) {
-                      alert("Configurações gerais sincronizadas com sucesso no Supabase!");
+                      alert("Configurações gerais guardadas com sucesso!");
                     } else {
                       throw new Error("Falha ao salvar");
                     }
                   } catch (err) {
-                    alert("Erro ao salvar configurações no Supabase. O dispositivo pode estar offline.");
+                    alert("Não foi possível guardar as configurações. Verifique a sua internet.");
                   }
                 }}
                 className="px-8 py-3.5 bg-accent hover:bg-amber-600 text-secondary font-black text-xs uppercase tracking-widest rounded-2xl flex items-center gap-2 shadow-lg shadow-amber-500/10 transition-all cursor-pointer"
               >
-                <Database size={14} /> Salvar Configurações no Supabase
+                <Database size={14} /> Guardar Configurações no Servidor
               </button>
             </div>
           </div>
@@ -2277,7 +2446,7 @@ function Home({
           <h3 className="text-4xl font-black text-heading tracking-tight">Biblioteca Digital</h3>
         </div>
         
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 sm:gap-6 lg:gap-8">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-4 sm:gap-6 lg:gap-8">
           {stats.map((stat) => {
             const isNumeric = /^\d+\+?$/.test(stat.count);
             return (
@@ -4029,8 +4198,8 @@ function ApoiaMissao({
   setSupportDetails, 
   isAdmin 
 }: { 
-  supportDetails: { banco: string; titular: string; conta: string; iban: string; transferencia: string };
-  setSupportDetails?: React.Dispatch<React.SetStateAction<{ banco: string; titular: string; conta: string; iban: string; transferencia: string }>>;
+  supportDetails: { banco: string; titular: string; conta: string; iban: string; transferencia: string; appLink?: string };
+  setSupportDetails?: React.Dispatch<React.SetStateAction<{ banco: string; titular: string; conta: string; iban: string; transferencia: string; appLink?: string }>>;
   isAdmin?: boolean;
 }) {
   const [copiedField, setCopiedField] = useState<string | null>(null);
@@ -4047,11 +4216,8 @@ function ApoiaMissao({
   };
 
   const fields = [
-    { label: "Banco", value: supportDetails.banco, icon: "🏦", key: "banco" },
     { label: "Titular", value: supportDetails.titular, icon: "👤", key: "titular" },
-    { label: "Nº da Conta", value: supportDetails.conta, icon: "🔢", key: "conta" },
     { label: "IBAN", value: supportDetails.iban, icon: "📄", key: "iban" },
-    { label: "Transferência/Multicaixa/Express", value: supportDetails.transferencia, icon: "📱", key: "transferencia" },
   ];
 
   return (
@@ -4099,21 +4265,10 @@ function ApoiaMissao({
         {isEditing && isAdmin && setSupportDetails ? (
           <div className="p-6 bg-slate-50 dark:bg-slate-900/40 rounded-3xl border border-dashed border-amber-500/30 space-y-6">
             <h4 className="text-sm font-black text-[#cfaf72] uppercase tracking-wider flex items-center gap-2">
-              <span>✏️</span> EDITANDO MEUS DADOS PARA APOIO:
+              <span>✏️</span> EDITAR MEUS DADOS E LINK DE SEGUIMENTO:
             </h4>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
-              <div className="space-y-2">
-                <label className="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 block">🏦 Nome do Banco</label>
-                <input
-                  type="text"
-                  value={supportDetails.banco}
-                  onChange={(e) => setSupportDetails(prev => ({ ...prev, banco: e.target.value }))}
-                  placeholder="Ex: Banco de Fomento Angola (BFA)"
-                  className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 py-3 px-4 rounded-xl focus:outline-none focus:border-accent text-sm font-semibold shadow-sm"
-                />
-              </div>
-              
               <div className="space-y-2">
                 <label className="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 block">👤 Titular da Conta</label>
                 <input
@@ -4126,28 +4281,6 @@ function ApoiaMissao({
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 block">🔢 Número da Conta</label>
-                <input
-                  type="text"
-                  value={supportDetails.conta}
-                  onChange={(e) => setSupportDetails(prev => ({ ...prev, conta: e.target.value }))}
-                  placeholder="Ex: 39482930291"
-                  className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 py-3 px-4 rounded-xl focus:outline-none focus:border-accent text-sm font-semibold shadow-sm"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 block">📱 Transferência/Multicaixa/Express</label>
-                <input
-                  type="text"
-                  value={supportDetails.transferencia}
-                  onChange={(e) => setSupportDetails(prev => ({ ...prev, transferencia: e.target.value }))}
-                  placeholder="Ex: 936386566"
-                  className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 py-3 px-4 rounded-xl focus:outline-none focus:border-accent text-sm font-semibold shadow-sm"
-                />
-              </div>
-
-              <div className="space-y-2 md:col-span-2">
                 <label className="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 block">📄 Código IBAN</label>
                 <input
                   type="text"
@@ -4157,17 +4290,43 @@ function ApoiaMissao({
                   className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 py-3 px-4 rounded-xl focus:outline-none focus:border-accent text-sm font-semibold shadow-sm"
                 />
               </div>
+
+              <div className="space-y-2 md:col-span-2">
+                <label className="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 block">🔗 Link para Partilhar o Aplicativo</label>
+                <input
+                  type="text"
+                  value={supportDetails.appLink || ""}
+                  onChange={(e) => setSupportDetails(prev => ({ ...prev, appLink: e.target.value }))}
+                  placeholder="Escreva o link personalizado ou deixe em branco para usar o link deste site."
+                  className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 py-3 px-4 rounded-xl focus:outline-none focus:border-accent text-sm font-semibold shadow-sm"
+                />
+              </div>
             </div>
 
             <div className="flex justify-end pt-2">
               <button
-                onClick={() => {
-                  setIsEditing(false);
-                  alert("Alterações dos dados de apoio guardadas com sucesso!");
+                onClick={async () => {
+                  try {
+                    const payload = [
+                      { chave: "support_titular", valor: supportDetails.titular || "" },
+                      { chave: "support_iban", valor: supportDetails.iban || "" },
+                      { chave: "support_app_link", valor: (supportDetails as any).appLink || "" }
+                    ];
+                    await fetch("/api/db/config/save", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify(payload)
+                    });
+                    setIsEditing(false);
+                    alert("Informações de apoio e link guardados com sucesso!");
+                  } catch (e) {
+                    setIsEditing(false);
+                    alert("Guardado com sucesso no seu aparelho!");
+                  }
                 }}
-                className="px-6 py-3 bg-emerald-550 hover:bg-emerald-600 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-md transition-all"
+                className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-md transition-all cursor-pointer"
               >
-                Salvar Informações Bancárias
+                Guardar e Salvar Tudo
               </button>
             </div>
           </div>
@@ -4189,8 +4348,8 @@ function ApoiaMissao({
             </div>
 
             {/* Bank Account Grid Panel */}
-            <div className="space-y-6 pt-6 border-t border-slate-100 dark:border-border-dark">
-              <h4 className="text-xs font-black uppercase tracking-widest text-[#cfaf72] mb-4">Dados para apoio:</h4>
+            <div className="space-y-6 pt-6 border-t border-slate-100 dark:border-border-dark text-left">
+              <h4 className="text-xs font-black uppercase tracking-widest text-[#cfaf72] mb-1">Dados para apoio bancário:</h4>
               
               <div className="grid grid-cols-1 gap-4">
                 {fields.map((field) => (
@@ -4210,10 +4369,10 @@ function ApoiaMissao({
                       <button
                         onClick={() => handleCopy(field.value, field.key)}
                         className={cn(
-                          "px-4 py-2.5 sm:py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 self-end sm:self-center shrink-0 border",
+                          "px-4 py-2.5 sm:py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 self-end sm:self-center shrink-0 border cursor-pointer",
                           copiedField === field.key
-                            ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
-                            : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-border-light dark:border-border-dark hover:border-accent hover:bg-accent hover:text-secondary shadow-sm"
+                            ? "bg-emerald-550 border-emerald-600 text-white"
+                            : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-[#cfaf72] hover:text-[#cfaf72] shadow-sm animate-fade-in"
                         )}
                       >
                         {copiedField === field.key ? (
@@ -4230,6 +4389,83 @@ function ApoiaMissao({
                   </div>
                 ))}
               </div>
+            </div>
+            <div className="space-y-6 pt-6 border-t border-slate-100 dark:border-border-dark text-left">
+              <h4 className="text-xs font-black uppercase tracking-widest text-[#cfaf72] mb-1">Partilhar Link do Aplicativo:</h4>
+              <p className="text-xs text-slate-600 dark:text-slate-400 font-semibold leading-relaxed">
+                Você também pode nos apoiar divulgando e partilhando o aplicativo Escola da Fé para amigos, familiares e irmãos da igreja!
+              </p>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const link = supportDetails.appLink || window.location.origin;
+                    try {
+                      navigator.clipboard.writeText(link);
+                      alert("Link do aplicativo copiado para a área de transferência!");
+                    } catch {
+                      alert("Copie o link manualmente: " + link);
+                    }
+                  }}
+                  className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between p-5 bg-slate-50 dark:bg-slate-900/60 rounded-2xl border border-border-light dark:border-border-dark hover:border-[#cfaf72]/30 transition-all gap-4 group text-left min-w-0"
+                >
+                  <div className="flex items-center gap-4 min-w-0 flex-grow">
+                    <span className="text-2xl shrink-0 w-10 h-10 bg-white dark:bg-slate-800 rounded-xl flex items-center justify-center shadow-inner">🔗</span>
+                    <div className="min-w-0 flex-1">
+                      <span className="text-xs text-slate-500 dark:text-slate-400 font-black uppercase tracking-wider block">Copiar Link do App</span>
+                      <span className="text-sm font-black text-slate-800 dark:text-slate-200 block truncate">{supportDetails.appLink || window.location.origin}</span>
+                    </div>
+                  </div>
+                  <span className="px-3.5 py-2 bg-white dark:bg-slate-800 rounded-xl text-xs font-black uppercase border border-border-light dark:border-border-dark text-[#cfaf72] hover:bg-accent hover:text-secondary transition shrink-0 self-start sm:self-center">
+                    Copiar
+                  </span>
+                </button>
+ 
+                <button
+                  type="button"
+                  onClick={() => {
+                    const link = supportDetails.appLink || window.location.origin;
+                    const shareText = encodeURIComponent(
+                      "Olá! Gostaria de partilhar contigo este excelente aplicativo Escola da Fé para estudos bíblicos, teologia e fortalecimento espiritual. Descobre lições edificantes e estudos profundos: " + link
+                    );
+                    window.open(`https://api.whatsapp.com/send?text=${shareText}`, "_blank");
+                  }}
+                  className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between p-5 bg-slate-50 dark:bg-slate-900/60 rounded-2xl border border-border-light dark:border-border-dark hover:border-emerald-500/30 transition-all gap-4 group text-left min-w-0"
+                >
+                  <div className="flex items-center gap-4 min-w-0 flex-grow">
+                    <span className="text-2xl shrink-0 w-10 h-10 bg-white dark:bg-slate-800 rounded-xl flex items-center justify-center shadow-inner">💬</span>
+                    <div className="min-w-0 flex-grow">
+                      <span className="text-xs text-slate-500 dark:text-slate-400 font-black uppercase tracking-wider block">Partilhar WhatsApp</span>
+                      <span className="text-sm font-black text-emerald-500 block">Enviar Mensagem</span>
+                    </div>
+                  </div>
+                  <span className="px-3.5 py-2 bg-emerald-500/10 text-emerald-500 rounded-xl text-xs font-black uppercase hover:bg-emerald-500/20 transition shrink-0 self-start sm:self-center">
+                    Partilhar
+                  </span>
+                </button>
+              </div>
+ 
+              {navigator.share && (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const link = supportDetails.appLink || window.location.origin;
+                    try {
+                      await navigator.share({
+                        title: "Escola da Fé",
+                        text: "Estudos bíblicos, teologia e crescimento espiritual através de lições e biografias edificantes modernas.",
+                        url: link
+                      });
+                    } catch (e) {
+                      console.warn("Share failed or was canceled", e);
+                    }
+                  }}
+                  className="w-full py-4 bg-accent hover:bg-amber-600 text-secondary font-black text-xs uppercase tracking-widest rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-amber-500/10 transition-all cursor-pointer"
+                >
+                  <Share2 size={16} /> Partilhar no Celular (Telemóvel)
+                </button>
+              )}
             </div>
           </>
         )}
@@ -4274,23 +4510,19 @@ function AppContent({ isDark, theme, setTheme }: { isDark: boolean, theme: "ligh
   }, [socialLinks]);
 
   const [supportDetails, setSupportDetails] = useState(() => {
+    const defaultDetails = {
+      banco: "",
+      titular: "Lemos Faya de Arcanjo",
+      conta: "",
+      iban: "AO06.0040.0000.3948.2930.2913.3",
+      transferencia: "",
+      appLink: window.location.origin
+    };
     try {
       const saved = localStorage.getItem("escola_da_fe_support_details");
-      return saved ? JSON.parse(saved) : {
-        banco: "Banco de Fomento Angola (BFA)",
-        titular: "Lemos Faya de Arcanjo",
-        conta: "39482930291",
-        iban: "AO06.0040.0000.3948.2930.2913.3",
-        transferencia: "936386566"
-      };
+      return saved ? { ...defaultDetails, ...JSON.parse(saved) } : defaultDetails;
     } catch {
-      return {
-        banco: "Banco de Fomento Angola (BFA)",
-        titular: "Lemos Faya de Arcanjo",
-        conta: "39482930291",
-        iban: "AO06.0040.0000.3948.2930.2913.3",
-        transferencia: "936386566"
-      };
+      return defaultDetails;
     }
   });
 
@@ -5045,11 +5277,9 @@ function AppContent({ isDark, theme, setTheme }: { isDark: boolean, theme: "ligh
           setSupportDetails((prev: any) => {
             const mappedSupport = { ...prev };
             configuracoes.forEach((row: any) => {
-              if (row.chave === "support_banco") mappedSupport.banco = row.valor;
-              else if (row.chave === "support_titular") mappedSupport.titular = row.valor;
-              else if (row.chave === "support_conta") mappedSupport.conta = row.valor;
-              else if (row.chave === "support_transferencia") mappedSupport.transferencia = row.valor;
+              if (row.chave === "support_titular") mappedSupport.titular = row.valor;
               else if (row.chave === "support_iban") mappedSupport.iban = row.valor;
+              else if (row.chave === "support_app_link") mappedSupport.appLink = row.valor;
             });
             return mappedSupport;
           });
@@ -5341,7 +5571,7 @@ function AppContent({ isDark, theme, setTheme }: { isDark: boolean, theme: "ligh
     <div className="min-h-screen bg-bg-page dark:bg-bg-dark transition-colors duration-500 selection:bg-accent/30 flex flex-col justify-between">
       <div className="w-full flex-grow">
         <Navbar isDark={isDark} theme={theme} setTheme={setTheme} toggleDark={() => setTheme(isDark ? "light" : "dark")} isAdmin={isAdmin} setIsAdmin={setIsAdmin} dbStatus={dbStatus} onSync={syncWithDatabase} supabaseConfigMissing={supabaseConfigMissing} onRestoreDefaults={resetAllToDefaults} />
-        <main className="pt-24 lg:pt-28 p-4 sm:p-8 lg:p-12 pb-32 lg:pb-28 max-w-[1920px] mx-auto">
+        <main className="pt-24 lg:pt-[156px] p-4 sm:p-8 lg:p-12 pb-32 lg:pb-28 max-w-[1920px] mx-auto">
           <AnimatePresence mode="wait">
             <Routes>
               <Route path="/" element={<Home onSelectItem={handleSelectItem} announcements={announcements} setAnnouncements={setAnnouncements} isAdmin={isAdmin} triggerConfirm={triggerConfirm} socialLinks={socialLinks} setSocialLinks={setSocialLinks} privacyText={privacyText} setPrivacyText={setPrivacyText} termsText={termsText} setTermsText={setTermsText} supportDetails={supportDetails} setSupportDetails={setSupportDetails} />} />
@@ -5354,6 +5584,7 @@ function AppContent({ isDark, theme, setTheme }: { isDark: boolean, theme: "ligh
               <Route path="/curso" element={<Course onSelectItem={handleSelectItem} courseLessons={courseLessons} setCourseLessons={setCourseLessons} isAdmin={isAdmin} triggerConfirm={triggerConfirm} />} />
               <Route path="/comunidade" element={<Community isAdmin={isAdmin} triggerConfirm={triggerConfirm} />} />
               <Route path="/apoio" element={<ApoiaMissao supportDetails={supportDetails} setSupportDetails={setSupportDetails} isAdmin={isAdmin} />} />
+              <Route path="/favoritos" element={<FavoritesView onSelectItem={handleSelectItem} />} />
             </Routes>
           </AnimatePresence>
         </main>

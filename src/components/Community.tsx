@@ -19,7 +19,9 @@ import {
   Flame,
   Frown,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  Upload,
+  Image
 } from "lucide-react";
 import { cn } from "@/src/lib/utils";
 import { getSupabaseClient as getClientClient } from "../lib/supabaseClient";
@@ -134,6 +136,7 @@ export default function Community({
   const [postContent, setPostContent] = useState("");
   const [postCategory, setPostCategory] = useState("ensinos");
   const [postImageUrl, setPostImageUrl] = useState("");
+  const [imgSourceMode, setImgSourceMode] = useState<"upload" | "url">("upload");
   const [postAuthor, setPostAuthor] = useState("Lemos Faya de Arcanjo");
 
   // Form states for Admin Ads Creation
@@ -150,6 +153,7 @@ export default function Community({
 
   // Category translations and colors Map
   const categoriesMap: Record<string, { label: string; color: string; bg: string }> = {
+    comunicados: { label: "Comunicado Oficial", color: "text-rose-500", bg: "bg-rose-500/10" },
     ensinos: { label: "Ensino Teológico", color: "text-amber-500", bg: "bg-amber-500/10" },
     noticias: { label: "Avisos & Notícias", color: "text-blue-500", bg: "bg-blue-500/10" },
     mensagens: { label: "Mensagem do Dia", color: "text-emerald-500", bg: "bg-emerald-500/10" },
@@ -728,6 +732,7 @@ export default function Community({
                 setEditingPostId(null);
                 setPostTitle("");
                 setPostContent("");
+                setPostCategory("comunicados");
                 setPostImageUrl("");
                 setIsPostFormOpen(true);
               }}
@@ -778,6 +783,7 @@ export default function Community({
                     onChange={(e) => setPostCategory(e.target.value)}
                     className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 text-slate-800 dark:text-white rounded-xl py-3 px-4 focus:outline-none focus:border-accent font-semibold"
                   >
+                    <option value="comunicados">📣 Comunicado Oficial</option>
                     <option value="ensinos">Teologia Básica</option>
                     <option value="estudos">Estudos Bíblicos</option>
                     <option value="noticias">Avisos e Notícias</option>
@@ -799,14 +805,119 @@ export default function Community({
               </div>
 
               <div>
-                <label className="block text-xs uppercase font-black tracking-wider text-muted mb-1.5">Link da Imagem Ilustrativa (Opcional)</label>
-                <input
-                  type="text"
-                  placeholder="https://images.unsplash.com/..."
-                  value={postImageUrl}
-                  onChange={(e) => setPostImageUrl(e.target.value)}
-                  className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 text-slate-800 dark:text-white rounded-xl py-3 px-4 focus:outline-none focus:border-accent font-semibold"
-                />
+                <label className="block text-xs uppercase font-black tracking-wider text-muted mb-1.5">Imagem Ilustrativa (Upload de Foto ou Link)</label>
+                
+                <div className="space-y-3">
+                  {/* Mode Selector Tabs */}
+                  <div className="grid grid-cols-2 gap-2 bg-slate-100 dark:bg-slate-900/60 p-1 rounded-xl">
+                    <button
+                      type="button"
+                      onClick={() => setImgSourceMode("upload")}
+                      className={cn(
+                        "py-2 text-xs font-black rounded-lg transition-all",
+                        imgSourceMode === "upload" 
+                          ? "bg-white dark:bg-slate-800 text-[#cfaf72] shadow-sm" 
+                          : "text-slate-500 dark:text-slate-400 hover:text-slate-700"
+                      )}
+                    >
+                      📁 Enviar Foto do Aparelho
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setImgSourceMode("url")}
+                      className={cn(
+                        "py-2 text-xs font-black rounded-lg transition-all",
+                        imgSourceMode === "url" 
+                          ? "bg-white dark:bg-slate-800 text-[#cfaf72] shadow-sm" 
+                          : "text-slate-500 dark:text-slate-400 hover:text-slate-700"
+                      )}
+                    >
+                      🔗 Link da Internet (URL)
+                    </button>
+                  </div>
+
+                  {imgSourceMode === "upload" ? (
+                    <div 
+                      className="border-2 border-dashed border-slate-200 dark:border-white/10 hover:border-[#cfaf72] rounded-2xl p-4 transition text-center cursor-pointer relative bg-slate-50/50 dark:bg-slate-900/30"
+                      onDragOver={(e) => e.preventDefault()}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        const file = e.dataTransfer.files?.[0];
+                        if (file) {
+                          if (file.size > 2 * 1024 * 1024) {
+                            alert("A imagem é muito grande. Escolha uma foto de até 2MB para desempenho ideal.");
+                            return;
+                          }
+                          const reader = new FileReader();
+                          reader.onloadend = () => {
+                            setPostImageUrl(reader.result as string);
+                          };
+                          reader.readAsDataURL(file);
+                        }
+                      }}
+                    >
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            if (file.size > 2 * 1024 * 1024) {
+                              alert("A imagem é muito grande. Escolha uma foto de até 2MB para desempenho ideal.");
+                              return;
+                            }
+                            const reader = new FileReader();
+                            reader.onloadend = () => {
+                              setPostImageUrl(reader.result as string);
+                            };
+                            reader.readAsDataURL(file);
+                          }
+                        }}
+                      />
+                      <div className="flex flex-col items-center justify-center space-y-1.5 py-2">
+                        <Upload size={20} className="text-[#cfaf72]" />
+                        <p className="text-xs font-bold text-slate-700 dark:text-slate-300">Selecione uma imagem ou arraste-a aqui</p>
+                        <p className="text-[10px] uppercase tracking-wider text-slate-400">Até 2MB para carregar diretamente no banco</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <input
+                      type="text"
+                      placeholder="https://images.unsplash.com/..."
+                      value={postImageUrl.startsWith("data:") ? "" : postImageUrl}
+                      onChange={(e) => setPostImageUrl(e.target.value)}
+                      className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 text-slate-800 dark:text-white rounded-xl py-3 px-4 focus:outline-none focus:border-accent font-semibold"
+                    />
+                  )}
+
+                  {/* Thumbnail Preview Area */}
+                  {postImageUrl && (
+                    <div className="p-3 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-white/5 flex items-center gap-3">
+                      <div className="w-16 h-12 rounded-lg overflow-hidden bg-slate-900 border border-slate-200 dark:border-white/10 shrink-0">
+                        <img 
+                          src={postImageUrl} 
+                          alt="Pré-visualização" 
+                          className="w-full h-full object-cover" 
+                          referrerPolicy="no-referrer"
+                        />
+                      </div>
+                      <div className="flex-grow min-w-0">
+                        <p className="text-[10px] font-black uppercase text-[#cfaf72]">Foto Carregada com Sucesso</p>
+                        <p className="text-xs text-slate-500 font-mono truncate">
+                          {postImageUrl.startsWith("data:") ? "Imagem local em Base64" : postImageUrl}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setPostImageUrl("")}
+                        className="p-1 px-2.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 text-xs font-extrabold uppercase rounded-lg transition shrink-0"
+                      >
+                        Limpar
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div>

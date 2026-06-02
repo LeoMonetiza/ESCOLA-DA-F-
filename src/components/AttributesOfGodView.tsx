@@ -72,9 +72,9 @@ export default function AttributesOfGodView() {
       </div>
 
       {/* Main Interactive Workspace Area */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start max-w-[1400px] mx-auto pt-4">
-        {/* Left Side: Filter, Search & Attributes Cards List (7 columns on large screen) */}
-        <div className="lg:col-span-7 space-y-6">
+      <div className="max-w-[1400px] mx-auto pt-4 space-y-6">
+        {/* Filter, Search & Attributes Cards */}
+        <div className="space-y-6">
           <div className="p-4 sm:p-6 bg-white dark:bg-[#1A237E]/20 rounded-3xl border border-slate-100 dark:border-white/5 shadow-xl space-y-4">
             {/* Search Input */}
             <div className="relative">
@@ -138,7 +138,7 @@ export default function AttributesOfGodView() {
           </div>
 
           {/* Cards List Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
             <AnimatePresence mode="popLayout">
               {filteredAttributes.map((attr, idx) => {
                 const isActive = activeId === attr.id;
@@ -190,7 +190,7 @@ export default function AttributesOfGodView() {
 
                     {/* Bottom Action bar inside Card */}
                     <span className="inline-flex items-center gap-1.5 mt-5 text-[10px] uppercase font-black text-[#cfaf72] self-start border-b border-dashed border-[#cfaf72]/40 hover:border-[#cfaf72] transition-colors leading-none pb-0.5">
-                      {isActive ? "Lendo Estudo ▲" : "Ler Passagens & Estudo ▼"}
+                      {isActive ? "Estudo Aberto ▲" : "Ler Estudo & Passagens →"}
                     </span>
                   </motion.div>
                 );
@@ -211,43 +211,56 @@ export default function AttributesOfGodView() {
             )}
           </div>
         </div>
+      </div>
 
-        {/* Right Side: Detailed Reader Workspace (5 columns) */}
-        <div className="lg:col-span-5 lg:sticky lg:top-28">
-          <AnimatePresence mode="wait">
-            {activeAttribute ? (
-              <motion.div
-                key={activeAttribute.id}
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 20 }}
-                className="p-6 sm:p-8 bg-white dark:bg-secondary rounded-3xl border border-slate-100 dark:border-white/5 shadow-2xl relative overflow-hidden space-y-6"
-              >
-                {/* Visual Header Indicator */}
-                <div className="flex items-center justify-between border-b border-slate-100 dark:border-white/5 pb-4">
-                  <div>
-                    <span className="text-[10px] font-black uppercase text-[#cfaf72] tracking-widest block mb-1">
-                      Estudo Doutrinário: {activeAttribute.type}
-                    </span>
-                    <h3 className="text-xl sm:text-2xl font-black text-[#1A237E] dark:text-white leading-tight">
-                      {activeAttribute.name}
-                    </h3>
-                  </div>
-                  <button 
-                    onClick={() => setActiveId(null)}
-                    className="text-slate-400 hover:text-slate-600 dark:hover:text-white p-2 hover:bg-slate-100 dark:hover:bg-white/5 rounded-xl transition"
-                    title="Fechar estudo"
-                  >
-                    ✕
-                  </button>
+      {/* Unified Global Modal Reader (shown on all screens, identical behavior to Homens de Deus) */}
+      <AnimatePresence>
+        {activeAttribute && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[150] bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-0 sm:p-4"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                setActiveId(null);
+              }
+            }}
+          >
+            <motion.div
+              initial={{ scale: 0.98, y: 15, opacity: 0 }}
+              animate={{ scale: 1, y: 0, opacity: 1 }}
+              exit={{ scale: 0.98, y: 15, opacity: 0 }}
+              transition={{ duration: 0.15, ease: "easeOut" }}
+              className="bg-white dark:bg-card-dark w-full h-full sm:h-[90vh] sm:max-h-[90vh] sm:max-w-2xl sm:rounded-[2rem] shadow-2xl overflow-y-auto flex flex-col p-6 sm:p-8 space-y-6"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between border-b border-slate-100 dark:border-white/5 pb-4 shrink-0">
+                <div>
+                  <span className="text-[10px] font-black uppercase text-[#cfaf72] tracking-widest block mb-1">
+                    Estudo Doutrinário &bull; {activeAttribute.type}
+                  </span>
+                  <h3 className="text-xl sm:text-2xl font-black text-[#1A237E] dark:text-white leading-tight">
+                    {activeAttribute.name}
+                  </h3>
                 </div>
+                <button
+                  onClick={() => setActiveId(null)}
+                  className="p-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-white/5 text-slate-500 dark:text-slate-300 hover:text-slate-800 dark:hover:text-white rounded-xl transition"
+                >
+                  ✕
+                </button>
+              </div>
 
-                {/* Long description text */}
-                <div className="space-y-4 text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed font-semibold whitespace-pre-line text-justify">
+              {/* Scrollable content container */}
+              <div className="space-y-6 text-left">
+                {/* Long description */}
+                <div className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed font-semibold whitespace-pre-line text-justify">
                   {activeAttribute.longDescription}
                 </div>
 
-                {/* Bible Verses Section */}
+                {/* Bible Verses */}
                 <div className="space-y-4 pt-4 border-t border-slate-100 dark:border-white/5">
                   <h4 className="text-xs uppercase tracking-widest font-black text-accent flex items-center gap-2">
                     <Quote size={14} />
@@ -255,15 +268,15 @@ export default function AttributesOfGodView() {
                   </h4>
                   <div className="space-y-4">
                     {activeAttribute.verses.map((v, i) => (
-                      <div key={i} className="p-4 bg-slate-50 dark:bg-slate-900rounded-2xl border border-slate-100 dark:border-white/5 relative">
+                      <div key={i} className="p-4 sm:p-5 bg-slate-50 dark:bg-slate-950/80 rounded-2xl border border-slate-200 dark:border-white/10 relative shadow-sm">
                         {/* Custom decorative Quote bracket */}
-                        <div className="absolute top-3 left-3 opacity-15"><Quote size={36} className="text-accent" /></div>
+                        <div className="absolute top-3 left-3 opacity-15"><Quote size={36} className="text-[#cfaf72]" /></div>
                         
                         <div className="pl-6 space-y-2 relative">
-                          <p className="text-[10px] font-black uppercase tracking-wider text-amber-500 dark:text-accent-orange">
+                          <p className="text-xs font-black uppercase tracking-wider text-amber-700 dark:text-[#cfaf72]">
                             {v.ref}
                           </p>
-                          <p className="text-xs sm:text-xs text-slate-600 dark:text-slate-300 font-mono italic leading-relaxed text-left leading-normal">
+                          <p className="text-xs sm:text-sm text-slate-900 dark:text-slate-100 font-medium italic leading-relaxed text-left leading-normal">
                             &ldquo;{v.text}&rdquo;
                           </p>
                         </div>
@@ -273,30 +286,14 @@ export default function AttributesOfGodView() {
                 </div>
 
                 {/* Encouraging Footer Note */}
-                <div className="text-center p-4 bg-amber-50/20 dark:bg-amber-950/20 rounded-2xl text-[10px] sm:text-xs font-bold text-[#cfaf72] leading-normal border border-[#cfaf72]/10">
+                <div className="text-center p-4 bg-amber-50/20 dark:bg-amber-950/20 rounded-2xl text-[10px] sm:text-xs font-bold text-[#cfaf72] leading-normal border border-[#cfaf72]/10 mt-4 shrink-0">
                   📖 Use estes versículos e significados teológicos para adoração privada, meditação bíblica e pregação sincera em sua paróquia ou lar.
                 </div>
-              </motion.div>
-            ) : (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="p-10 text-center space-y-4 bg-slate-100/50 dark:bg-[#1A237E]/5 rounded-3xl border border-dashed border-slate-200 dark:border-white/5"
-              >
-                <div className="w-16 h-16 bg-accent/10 text-[#cfaf72] rounded-full flex items-center justify-center mx-auto animate-bounce">
-                  <Bookmark size={28} />
-                </div>
-                <div className="space-y-1.5 max-w-xs mx-auto">
-                  <h3 className="text-md sm:text-lg font-black text-slate-800 dark:text-white uppercase tracking-wider">Painel de Leitura</h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 font-semibold leading-relaxed">
-                    Selecione qualquer atributo de Deus na lista lateral para abrir e examinar o estudo teológico detalhado correspondente e todas as suas passagens bíblicas sagradas de apoio.
-                  </p>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-      </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }
