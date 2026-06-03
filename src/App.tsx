@@ -5524,14 +5524,16 @@ function AppContent({ isDark, theme, setTheme }: { isDark: boolean, theme: "ligh
         // 5. Map Curso (courseLessons)
         const mappedCurso = (curso || [])
           .filter((row: any) => {
-            if (deletedIds.includes(row.lesson)) {
-              fetch(`/api/db/curso/${row.lesson}`, { method: "DELETE" }).catch(() => {});
+            const lessonNum = Number(row.lesson) || Number(row.numero_licao) || (row.id ? Number(String(row.id).replace("lesson_", "")) : 0);
+            if (deletedIds.includes(lessonNum) || deletedIds.includes(`course_${lessonNum}`)) {
+              fetch(`/api/db/curso/${lessonNum}`, { method: "DELETE" }).catch(() => {});
               return false;
             }
             return true;
           })
           .map((row: any) => {
-            const localDefault = BASIC_COURSE.find(def => def.lesson === row.lesson);
+            const lessonNum = Number(row.lesson) || Number(row.numero_licao) || (row.id ? Number(String(row.id).replace("lesson_", "")) : 0);
+            const localDefault = BASIC_COURSE.find(def => def.lesson === lessonNum);
             const isBoilerplate = row.conteudo && (
               row.conteudo.toLowerCase().includes("cenário laboral") ||
               row.conteudo.toLowerCase().includes("garantir exemplar") ||
@@ -5543,9 +5545,9 @@ function AppContent({ isDark, theme, setTheme }: { isDark: boolean, theme: "ligh
               row.conteudo.toLowerCase().includes("obstáculo na atualidade")
             );
             return {
-              lesson: row.lesson,
-              title: row.titulo_licao,
-              description: row.description,
+              lesson: lessonNum,
+              title: row.titulo_licao || row.title || (localDefault ? localDefault.title : `Lição ${lessonNum}`),
+              description: row.descricao || row.description || (localDefault ? localDefault.description : ""),
               category: row.category || "Curso Teológico",
               content: (localDefault && (!row.conteudo || isBoilerplate)) ? localDefault.content : row.conteudo
             };
@@ -5553,16 +5555,17 @@ function AppContent({ isDark, theme, setTheme }: { isDark: boolean, theme: "ligh
         setCourseLessons((prev: any[]) => {
           const merged = [...mappedCurso];
           (prev || []).forEach(localItem => {
-            if (!merged.some(m => m.lesson === localItem.lesson) && !deletedIds.includes(localItem.lesson)) {
+            const tempLesson = Number(localItem.lesson) || 0;
+            if (!merged.some(m => Number(m.lesson) === tempLesson) && !deletedIds.includes(tempLesson) && !deletedIds.includes(`course_${tempLesson}`)) {
               merged.push(localItem);
             }
           });
           BASIC_COURSE.forEach(def => {
-            if (!merged.some(m => m.lesson === def.lesson) && !deletedIds.includes(def.lesson)) {
+            if (!merged.some(m => Number(m.lesson) === def.lesson) && !deletedIds.includes(def.lesson) && !deletedIds.includes(`course_${def.lesson}`)) {
               merged.push(def);
             }
           });
-          return merged.sort((a, b) => (a.title || "").localeCompare(b.title || "", 'pt-BR'));
+          return merged.sort((a, b) => (Number(a.lesson) || 0) - (Number(b.lesson) || 0));
         });
 
         // 6. Map Postagens (announcements)
