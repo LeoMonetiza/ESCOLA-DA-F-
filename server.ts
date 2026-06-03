@@ -22,6 +22,8 @@ interface FallbackData {
   postagens: any[];
   configuracoes: any[];
   homens: any[];
+  dispositivos: any[];
+  livros: any[];
 }
 
 const FALLBACK_FILE = path.join(process.cwd(), "community_fallback.json");
@@ -58,7 +60,9 @@ function getFallbackData(): FallbackData {
     curso: [],
     postagens: [],
     configuracoes: [],
-    homens: []
+    homens: [],
+    dispositivos: [],
+    livros: []
   };
 
   try {
@@ -182,7 +186,9 @@ async function startServer() {
         comments,
         reactions,
         ads,
-        homens
+        homens,
+        dispositivos,
+        livros
       ] = await Promise.all([
         safeQuery("estudos_basicos", "estudos"),
         safeQuery("dicionario_biblico", "dicionario"),
@@ -195,7 +201,9 @@ async function startServer() {
         safeQuery("comments", "comments"),
         safeQuery("reactions", "reactions"),
         safeQuery("ads", "ads"),
-        safeQuery("homens_de_deus", "homens")
+        safeQuery("homens_de_deus", "homens"),
+        safeQuery("dispositivos", "dispositivos"),
+        safeQuery("livros", "livros")
       ]);
 
       res.json({
@@ -212,7 +220,9 @@ async function startServer() {
           comments,
           reactions,
           ads,
-          homens
+          homens,
+          dispositivos,
+          livros
         }
       });
     } catch (error: any) {
@@ -245,6 +255,8 @@ async function startServer() {
     else if (table === "comments") { dbTable = "comments"; fallbackKey = "comments"; }
     else if (table === "reactions") { dbTable = "reactions"; fallbackKey = "reactions"; }
     else if (table === "ads") { dbTable = "ads"; fallbackKey = "ads"; }
+    else if (table === "dispositivos") { dbTable = "dispositivos"; fallbackKey = "dispositivos"; }
+    else if (table === "livros") { dbTable = "livros"; fallbackKey = "livros"; }
 
     if (!dbTable) return res.status(400).json({ error: "Tabela especificada não reconhecida." });
 
@@ -316,6 +328,8 @@ async function startServer() {
     else if (table === "comments") { dbTable = "comments"; fallbackKey = "comments"; }
     else if (table === "reactions") { dbTable = "reactions"; fallbackKey = "reactions"; }
     else if (table === "ads") { dbTable = "ads"; fallbackKey = "ads"; }
+    else if (table === "dispositivos") { dbTable = "dispositivos"; fallbackKey = "dispositivos"; }
+    else if (table === "livros") { dbTable = "livros"; fallbackKey = "livros"; }
 
     if (!dbTable) return res.status(400).json({ error: "Tabela especificada não reconhecida." });
 

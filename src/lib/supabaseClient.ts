@@ -3,19 +3,17 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = (import.meta as any).env.VITE_SUPABASE_URL?.replace(/^["']|["']$/g, "");
 const supabaseAnonKey = (import.meta as any).env.VITE_SUPABASE_ANON_KEY?.replace(/^["']|["']$/g, "");
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error("Supabase não está configurado corretamente");
-}
+const cleanUrl = supabaseUrl?.trim().replace(/\/rest\/v1\/?$/, "").replace(/\/$/, "");
 
-const cleanUrl = supabaseUrl.trim().replace(/\/rest\/v1\/?$/, "").replace(/\/$/, "");
-
-export const supabase = createClient(cleanUrl, supabaseAnonKey.trim(), {
-  auth: {
-    persistSession: true,
-    autoRefreshToken: true,
-    detectSessionInUrl: false
-  }
-});
+export const supabase = (supabaseUrl && supabaseAnonKey) 
+  ? createClient(cleanUrl, supabaseAnonKey.trim(), {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: false
+      }
+    })
+  : null;
 
 export async function getSupabaseClient() {
   return supabase;
@@ -51,7 +49,8 @@ export async function performResilientDbWrite(
     posts: "posts",
     comments: "comments",
     reactions: "reactions",
-    ads: "ads"
+    ads: "ads",
+    livros: "livros"
   };
 
   const dbTable = tableMap[table] || table;

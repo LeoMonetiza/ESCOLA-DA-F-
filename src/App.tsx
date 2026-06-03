@@ -50,7 +50,9 @@ import { cn } from "@/src/lib/utils";
 import { BIBLICAL_THEMES, BIBLICAL_NAMES, BIBLICAL_STORIES, THEOLOGY_TOPICS, BASIC_COURSE } from "@/src/data/biblicalData";
 import AITeacher from "./components/AITeacher";
 import HomensDeDeusView from "./components/HomensDeDeus";
+import UsersView from "./components/UsersView";
 import Community from "./components/Community";
+import LivrosView, { DEFAULT_LIVROS } from "./components/LivrosView";
 import PWAController from "./components/PWAController";
 import LivretoManager from "./components/LivretoManager";
 import AttributesOfGodView from "./components/AttributesOfGodView";
@@ -969,6 +971,11 @@ function Navbar({
   const [adminCodeInput, setAdminCodeInput] = useState("");
   const [showAdminLogin, setShowAdminLogin] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+
+  // Custom User Profile states
+  const [userName, setUserName] = useState(() => localStorage.getItem("escola_da_fe_user_name") || "");
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [tempName, setTempName] = useState("");
   
   const navItems = [
     { name: "Início", path: "/", icon: <HomeIcon size={20} /> },
@@ -978,10 +985,12 @@ function Navbar({
     { name: "Homens de Deus", path: "/homens-deus", icon: <Users size={20} /> },
     { name: "Teologia", path: "/teologia", icon: <Library size={20} /> },
     { name: "Atributos", path: "/atributos", icon: <Sparkles size={20} /> },
+    { name: "Livraria / Livros", path: "/livros", icon: <Library size={20} className="text-[#cfaf72]" /> },
     { name: "Curso", path: "/curso", icon: <GraduationCap size={20} /> },
     { name: "Mural", path: "/comunidade", icon: <MessageCircle size={20} /> },
     { name: "Favoritos", path: "/favoritos", icon: <Star size={20} className="text-amber-500" /> },
     { name: "Apoia a Missão", path: "/apoio", icon: <Heart size={20} className="text-pink-500 animate-pulse" /> },
+    ...(isAdmin ? [{ name: "Usuários Ativos", path: "/usuarios", icon: <Monitor size={20} className="text-emerald-400" /> }] : []),
   ];
 
   const handleAdminSubmit = (e: React.FormEvent) => {
@@ -1074,6 +1083,20 @@ function Navbar({
                 <span className="sm:hidden">Offline</span>
               </button>
             )}
+
+            {/* Personalização / Identificação do Usuário */}
+            <button
+              type="button"
+              onClick={() => {
+                setTempName(userName);
+                setIsEditingName(true);
+              }}
+              className="flex items-center gap-1.5 px-3 py-2 bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/5 hover:bg-slate-200 dark:hover:bg-white/10 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white rounded-xl transition-all cursor-pointer text-xs font-bold active:scale-95 duration-100 shrink-0"
+              title="Identificar o meu Nome para o Administrador e Mural"
+            >
+              <User size={13} className="text-[#cfaf72]" />
+              <span className="max-w-[110px] sm:max-w-[140px] truncate">{userName || "Anónimo / Visitante"}</span>
+            </button>
 
             {/* Theme Toggler for Desktop & Mobile (Cycling through Light/Dark/System) */}
             <button 
@@ -1186,6 +1209,74 @@ function Navbar({
           ))}
         </div>
       </header>
+
+      {/* Modal para Editar Nome (User Profile Badge) */}
+      <AnimatePresence>
+        {isEditingName && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsEditingName(false)}
+              className="absolute inset-0 bg-slate-950/65 backdrop-blur-xs cursor-pointer"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              className="bg-white dark:bg-[#1C2541] border border-slate-200 dark:border-white/10 rounded-3xl p-6 shadow-2xl relative z-[101] w-full max-w-sm text-slate-800 dark:text-slate-100"
+            >
+              <h3 className="text-base font-black text-slate-900 dark:text-white uppercase tracking-wider mb-2 flex items-center gap-2">
+                <span className="text-[#cfaf72]">👤</span> Identificação
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 font-semibold mb-4 leading-relaxed">
+                Como gostaria de ser identificado nos relatórios de atividade e mural de recados da Escola da Fé?
+              </p>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-[#cfaf72] mb-1.5">O Seu Nome / Cargo</label>
+                  <input
+                    type="text"
+                    value={tempName}
+                    onChange={(e) => setTempName(e.target.value)}
+                    placeholder="Ex: Pastor Marcos Correia..."
+                    className="w-full bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-white border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-accent"
+                    maxLength={100}
+                    autoFocus
+                  />
+                </div>
+
+                <div className="flex items-center gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsEditingName(false)}
+                    className="flex-1 py-3 text-xs bg-slate-100 dark:bg-white/5 hover:bg-slate-250 hover:dark:bg-white/10 text-slate-700 dark:text-slate-300 font-black rounded-xl uppercase tracking-wider transition-all cursor-pointer"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const trimmed = tempName.trim();
+                      const final = trimmed || "Visitante Anônimo";
+                      localStorage.setItem("escola_da_fe_user_name", final);
+                      setUserName(final);
+                      setIsEditingName(false);
+                      // Dispara o evento global para sincronizar
+                      window.dispatchEvent(new CustomEvent("register-user-device", { detail: { name: final } }));
+                    }}
+                    className="flex-1 py-3 text-xs bg-[#cfaf72] text-slate-900 font-black rounded-xl uppercase tracking-wider hover:bg-white border border-[#cfaf72] hover:text-slate-900 transition-all duration-300 cursor-pointer"
+                  >
+                    Salvar
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Mobile/Tablet Full Screen Menu Overlay */}
       <AnimatePresence>
@@ -1380,26 +1471,30 @@ const SQL_SCHEMAS = {
   postgres: {
     usuarios: `-- TABELA DE USUÁRIOS (PostgreSQL)\nCREATE TABLE IF NOT EXISTS usuarios (\n    id SERIAL PRIMARY KEY,\n    nome VARCHAR(150) NOT NULL,\n    email VARCHAR(255) UNIQUE NOT NULL,\n    senha_hash VARCHAR(255) NOT NULL,\n    cargo VARCHAR(50) DEFAULT 'estudante',\n    criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP\n);`,
     postagens: `-- TABELA DE POSTAGENS / MURAL (PostgreSQL)\nCREATE TABLE IF NOT EXISTS postagens (\n    id VARCHAR(100) PRIMARY KEY,\n    titulo VARCHAR(255) NOT NULL,\n    mensagem TEXT NOT NULL,\n    data_publicacao VARCHAR(50) NOT NULL,\n    autor VARCHAR(100) DEFAULT 'Lemos Faya de Arcanjo',\n    imagem_url TEXT,\n    criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP\n);`,
-    redes: `-- TABELA DE CONFIGURAÇÕES SOCIAIS / CONTATOS (PostgreSQL)\nCREATE TABLE IF NOT EXISTS configuracoes_sociais (\n    chave VARCHAR(50) PRIMARY KEY,\n    valor TEXT NOT NULL,\n    atualizado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP\n);\n\n-- POPULAR CONFIGURAÇÕES SOCIAIS SEÇÃO WHATSAPP (EVITANDO CONFLITOS)\nINSERT INTO configuracoes_sociais (chave, valor) VALUES \n('whatsapp', '936386566'),\n('instagram', 'https://instagram.com/escoladafe'),\n('youtube', 'https://youtube.com/escoladafe'),\n('facebook', 'https://www.facebook.com/lemosmabiala.faya/')\nON CONFLICT (chave) DO NOTHING;`,
+    redes: `-- TABELA DE CONFIGURAÇÕES SOCIAIS / CONTATOS (PostgreSQL)\nCREATE TABLE IF NOT EXISTS configuracoes_sociais (\n    chave VARCHAR(50) PRIMARY KEY,\n    valor TEXT NOT NULL,\n    atualizado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP\n);\n\n-- POPULAR CONFIGURAÇÕES SOCIAIS SEÇÃO WHATSAPP (EVITANDO CONFLITOS)\nINSERT INTO configuracoes_sociais (chave, valor) VALUES \n('whatsapp', '936386566'),\n('instagram', 'https://instagram.com/escoladafe'),\n('youtube', 'https://youtube.com/escoladafe'),\n('facebook', 'https://www.facebook.com/lemosmabiala.faya/'),\n('support_pix', ''),\n('support_visa', ''),\n('support_paypal', ''),\n('support_mpesa', '')\nON CONFLICT (chave) DO NOTHING;`,
     progresso: `-- TABELA DE PROGRESSO DO ALUNO (PostgreSQL)\nCREATE TABLE IF NOT EXISTS progresso_estudante (\n    id SERIAL PRIMARY KEY,\n    aluno_email VARCHAR(255) NOT NULL,\n    item_id VARCHAR(100) NOT NULL,\n    completado BOOLEAN DEFAULT TRUE,\n    completado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,\n    UNIQUE(aluno_email, item_id)\n);`,
     estudos: `-- TABELA DE ESTUDOS TEMÁTICOS / ARTIGOS (PostgreSQL)\nCREATE TABLE IF NOT EXISTS estudos_basicos (\n    id VARCHAR(100) PRIMARY KEY,\n    titulo VARCHAR(255) NOT NULL,\n    descricao TEXT NOT NULL,\n    categoria VARCHAR(100) NOT NULL,\n    conteudo TEXT NOT NULL,\n    autor VARCHAR(150) DEFAULT 'Lemos Faya de Arcanjo',\n    criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP\n);`,
     dicionario: `-- TABELA DO DICIONÁRIO BÍBLICO DE TERMOS (PostgreSQL)\nCREATE TABLE IF NOT EXISTS dicionario_biblico (\n    id SERIAL PRIMARY KEY,\n    termo VARCHAR(150) UNIQUE NOT NULL,\n    significado TEXT NOT NULL,\n    referencia_biblica VARCHAR(250)\n);`,
     teologia: `-- TABELA DE EXPOSIÇÕES DOUTRINÁRIAS / TEOLOGIA (PostgreSQL)\nCREATE TABLE IF NOT EXISTS teologia_doutrinas (\n    id VARCHAR(100) PRIMARY KEY,\n    titulo VARCHAR(255) NOT NULL,\n    resumo TEXT NOT NULL,\n    referencias_biblicas TEXT NOT NULL,\n    conteudo_completo TEXT NOT NULL\n);`,
     curso: `-- TABELA DE MÓDULOS E LIÇÕES DO CURSO DE TEOLOGIA (PostgreSQL)\nCREATE TABLE IF NOT EXISTS licoes_curso (\n    id VARCHAR(100) PRIMARY KEY,\n    modulo_titulo VARCHAR(255) NOT NULL,\n    numero_modulo INT NOT NULL,\n    titulo_licao VARCHAR(255) NOT NULL,\n    numero_licao INT NOT NULL,\n    conteudo TEXT NOT NULL,\n    duracao_minutos INT DEFAULT 15\n);`,
     apoio: `-- TABELA DE DADOS DE APOIO À MISSÃO (PostgreSQL)\nCREATE TABLE IF NOT EXISTS dados_apoio (\n    chave VARCHAR(50) PRIMARY KEY,\n    valor TEXT NOT NULL,\n    atualizado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP\n);\n\n-- POPULAR DADOS DE APOIO AUTOMATICAMENTE\nINSERT INTO dados_apoio (chave, valor) VALUES\n('banco', 'Banco de Fomento Angola (BFA)'),\n('titular', 'Lemos Faya de Arcanjo'),\n('conta', '39482930291'),\n('iban', 'AO06.0040.0000.3948.2930.2913.3'),\n('transferencia', '936386566')\nON CONFLICT (chave) DO NOTHING;`,
-    homens: `-- TABELA DE HOMENS DE DEUS (PostgreSQL)\nCREATE TABLE IF NOT EXISTS homens_de_deus (\n    id VARCHAR(100) PRIMARY KEY,\n    nome VARCHAR(255) NOT NULL,\n    descricao TEXT NOT NULL,\n    imagem TEXT,\n    era VARCHAR(100) DEFAULT 'Contemporâneo',\n    birth_and_death VARCHAR(150),\n    main_legacy VARCHAR(255),\n    bible_verse TEXT,\n    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP\n);\n\n-- ATIVAR ROW LEVEL SECURITY (RLS) NO SUPABASE\nALTER TABLE homens_de_deus ENABLE ROW LEVEL SECURITY;\n\n-- PERMISSÕES RLS\nDROP POLICY IF EXISTS "Leitura pública para todos" ON homens_de_deus;\nDROP POLICY IF EXISTS "Controle total para administradores" ON homens_de_deus;\nDROP POLICY IF EXISTS "Acesso público irrestrito homens" ON homens_de_deus;\nCREATE POLICY "Acesso público irrestrito homens" ON homens_de_deus FOR ALL USING (true) WITH CHECK (true);\n\n-- HABILITAR REALTIME NO SUPABASE (OPERAÇÃO REENTRANTE SEGUNDO REGRAS DO POSTGRES)\nDO $$\nBEGIN\n    IF NOT EXISTS (\n        SELECT 1 FROM pg_publication_rel pr \n        JOIN pg_publication p ON pr.prpubid = p.oid \n        JOIN pg_class c ON pr.prrelid = c.oid \n        WHERE p.pubname = 'supabase_realtime' AND c.relname = 'homens_de_deus'\n    ) THEN\n        ALTER PUBLICATION supabase_realtime ADD TABLE homens_de_deus;\n    END IF;\nEND $$;`
+    homens: `-- TABELA DE HOMENS DE DEUS (PostgreSQL)\nCREATE TABLE IF NOT EXISTS homens_de_deus (\n    id VARCHAR(100) PRIMARY KEY,\n    nome VARCHAR(255) NOT NULL,\n    descricao TEXT NOT NULL,\n    imagem TEXT,\n    era VARCHAR(100) DEFAULT 'Contemporâneo',\n    birth_and_death VARCHAR(150),\n    main_legacy VARCHAR(255),\n    bible_verse TEXT,\n    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP\n);\n\n-- ATIVAR ROW LEVEL SECURITY (RLS) NO SUPABASE\nALTER TABLE homens_de_deus ENABLE ROW LEVEL SECURITY;\n\n-- PERMISSÕES RLS\nDROP POLICY IF EXISTS "Leitura pública para todos" ON homens_de_deus;\nDROP POLICY IF EXISTS "Controle total para administradores" ON homens_de_deus;\nDROP POLICY IF EXISTS "Acesso público irrestrito homens" ON homens_de_deus;\nCREATE POLICY "Acesso público irrestrito homens" ON homens_de_deus FOR ALL USING (true) WITH CHECK (true);\n\n-- HABILITAR REALTIME NO SUPABASE (OPERAÇÃO REENTRANTE SEGUNDO REGRAS DO POSTGRES)\nDO $$\nBEGIN\n    IF NOT EXISTS (\n        SELECT 1 FROM pg_publication_rel pr \n        JOIN pg_publication p ON pr.prpubid = p.oid \n        JOIN pg_class c ON pr.prrelid = c.oid \n        WHERE p.pubname = 'supabase_realtime' AND c.relname = 'homens_de_deus'\n    ) THEN\n        ALTER PUBLICATION supabase_realtime ADD TABLE homens_de_deus;\n    END IF;\nEND $$;`,
+    dispositivos: `-- TABELA DE DISPOSITIVOS INSTALADOS (PostgreSQL)\nCREATE TABLE IF NOT EXISTS dispositivos (\n    id VARCHAR(100) PRIMARY KEY,\n    device_id VARCHAR(100) NOT NULL,\n    name VARCHAR(150) DEFAULT 'Visitante Anónimo',\n    os VARCHAR(50) DEFAULT 'Desconhecido',\n    browser VARCHAR(50) DEFAULT 'Desconhecido',\n    is_pwa BOOLEAN DEFAULT FALSE,\n    device_type VARCHAR(100) DEFAULT 'Computador (Desktop)',\n    installed_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,\n    last_active_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP\n);\n\n-- ATIVAR ROW LEVEL SECURITY\nALTER TABLE dispositivos ENABLE ROW LEVEL SECURITY;\n\n-- PERMISSIONAMENTO PÚBLICO INTEGRAL\nDROP POLICY IF EXISTS "Acesso público irrestrito dispositivos" ON dispositivos;\nCREATE POLICY "Acesso público irrestrito dispositivos" ON dispositivos FOR ALL USING (true) WITH CHECK (true);`,
+    livros: `-- TABELA DE LIVROS (PostgreSQL)\nCREATE TABLE IF NOT EXISTS livros (\n    id VARCHAR(100) PRIMARY KEY,\n    titulo VARCHAR(255) NOT NULL,\n    autor VARCHAR(150) NOT NULL,\n    descricao TEXT NOT NULL,\n    preco VARCHAR(50) DEFAULT 'Grátis',\n    paginas INT DEFAULT 0,\n    editora VARCHAR(150) DEFAULT 'Escola da Fé',\n    foto_capa TEXT,\n    download_url TEXT,\n    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP\n);\n\n-- ATIVAR ROW LEVEL SECURITY RLS\nALTER TABLE livros ENABLE ROW LEVEL SECURITY;\n\n-- ACESSO PÚBLICO INTEGRAL\nDROP POLICY IF EXISTS "Acesso público irrestrito livros" ON livros;\nCREATE POLICY "Acesso público irrestrito livros" ON livros FOR ALL USING (true) WITH CHECK (true);`
   },
   sqlite: {
     usuarios: `-- TABELA DE USUÁRIOS (SQLite)\nCREATE TABLE IF NOT EXISTS usuarios (\n    id INTEGER PRIMARY KEY AUTOINCREMENT,\n    nome TEXT NOT NULL,\n    email TEXT UNIQUE NOT NULL,\n    senha_hash TEXT NOT NULL,\n    cargo TEXT DEFAULT 'estudante',\n    criado_em DATETIME DEFAULT CURRENT_TIMESTAMP\n);`,
     postagens: `-- TABELA DE POSTAGENS / MURAL (SQLite)\nCREATE TABLE IF NOT EXISTS postagens (\n    id TEXT PRIMARY KEY,\n    titulo TEXT NOT NULL,\n    mensagem TEXT NOT NULL,\n    data_publicacao TEXT NOT NULL,\n    autor TEXT DEFAULT 'Lemos Faya de Arcanjo',\n    imagem_url TEXT,\n    criado_em DATETIME DEFAULT CURRENT_TIMESTAMP\n);`,
-    redes: `-- TABELA DE CONFIGURAÇÕES SOCIAIS (SQLite)\nCREATE TABLE IF NOT EXISTS configuracoes_sociais (\n    chave TEXT PRIMARY KEY,\n    valor TEXT NOT NULL,\n    atualizado_em DATETIME DEFAULT CURRENT_TIMESTAMP\n);\n\n-- CONFIGURAÇÕES PREVIAMENTE SETADAS\nINSERT OR IGNORE INTO configuracoes_sociais (chave, valor) VALUES \n('whatsapp', '936386566'),\n('instagram', 'https://instagram.com/escoladafe'),\n('youtube', 'https://youtube.com/escoladafe'),\n('facebook', 'https://www.facebook.com/lemosmabiala.faya/');`,
+    redes: `-- TABELA DE CONFIGURAÇÕES SOCIAIS (SQLite)\nCREATE TABLE IF NOT EXISTS configuracoes_sociais (\n    chave TEXT PRIMARY KEY,\n    valor TEXT NOT NULL,\n    atualizado_em DATETIME DEFAULT CURRENT_TIMESTAMP\n);\n\n-- CONFIGURAÇÕES PREVIAMENTE SETADAS\nINSERT OR IGNORE INTO configuracoes_sociais (chave, valor) VALUES \n('whatsapp', '936386566'),\n('instagram', 'https://instagram.com/escoladafe'),\n('youtube', 'https://youtube.com/escoladafe'),\n('facebook', 'https://www.facebook.com/lemosmabiala.faya/'),\n('support_pix', ''),\n('support_visa', ''),\n('support_paypal', ''),\n('support_mpesa', '');`,
     progresso: `-- TABELA DE PROGRESSO DO ALUNO (SQLite)\nCREATE TABLE IF NOT EXISTS progresso_estudante (\n    id INTEGER PRIMARY KEY AUTOINCREMENT,\n    aluno_email TEXT NOT NULL,\n    item_id TEXT NOT NULL,\n    completado INTEGER DEFAULT 1,\n    completado_em DATETIME DEFAULT CURRENT_TIMESTAMP,\n    UNIQUE(aluno_email, item_id)\n);`,
     estudos: `-- TABELA DE ESTUDOS TEMÁTICOS (SQLite)\nCREATE TABLE IF NOT EXISTS estudos_basicos (\n    id TEXT PRIMARY KEY,\n    titulo TEXT NOT NULL,\n    descricao TEXT NOT NULL,\n    categoria TEXT NOT NULL,\n    conteudo TEXT NOT NULL,\n    autor TEXT DEFAULT 'Lemos Faya de Arcanjo',\n    criado_em DATETIME DEFAULT CURRENT_TIMESTAMP\n);`,
     dicionario: `-- TABELA DO DICIONÁRIO BÍBLICO (SQLite)\nCREATE TABLE IF NOT EXISTS dicionario_biblico (\n    id INTEGER PRIMARY KEY AUTOINCREMENT,\n    termo TEXT UNIQUE NOT NULL,\n    significado TEXT NOT NULL,\n    referencia_biblica TEXT\n);`,
     teologia: `-- TABELA DE EXPOSIÇÕES DOUTRINÁRIAS (SQLite)\nCREATE TABLE IF NOT EXISTS teologia_doutrinas (\n    id TEXT PRIMARY KEY,\n    titulo TEXT NOT NULL,\n    resumo TEXT NOT NULL,\n    referencias_biblicas TEXT NOT NULL,\n    conteudo_completo TEXT NOT NULL\n);`,
     curso: `-- TABELA DE LIÇÕES DO CURSO DE TEOLOGIA (SQLite)\nCREATE TABLE IF NOT EXISTS licoes_curso (\n    id TEXT PRIMARY KEY,\n    modulo_titulo TEXT NOT NULL,\n    numero_modulo INTEGER NOT NULL,\n    titulo_licao TEXT NOT NULL,\n    numero_licao INTEGER NOT NULL,\n    conteudo TEXT NOT NULL,\n    duracao_minutos INTEGER DEFAULT 15\n);`,
     apoio: `-- TABELA DE DADOS DE APOIO À MISSÃO (SQLite)\nCREATE TABLE IF NOT EXISTS dados_apoio (\n    chave TEXT PRIMARY KEY,\n    valor TEXT NOT NULL,\n    atualizado_em DATETIME DEFAULT CURRENT_TIMESTAMP\n);\n\n-- CONFIGURAÇÕES INICIAIS DE APOIO\nINSERT OR IGNORE INTO dados_apoio (chave, valor) VALUES \n('banco', 'Banco de Fomento Angola (BFA)'),\n('titular', 'Lemos Faya de Arcanjo'),\n('conta', '39482930291'),\n('iban', 'AO06.0040.0000.3948.2930.2913.3'),\n('transferencia', '936386566');`,
-    homens: `-- TABELA DE HOMENS DE DEUS (SQLite)\nCREATE TABLE IF NOT EXISTS homens_de_deus (\n    id TEXT PRIMARY KEY,\n    nome TEXT NOT NULL,\n    descricao TEXT NOT NULL,\n    imagem TEXT,\n    era TEXT DEFAULT 'Contemporâneo',\n    birth_and_death TEXT,\n    main_legacy TEXT,\n    bible_verse TEXT,\n    created_at DATETIME DEFAULT CURRENT_TIMESTAMP\n);`
+    homens: `-- TABELA DE HOMENS DE DEUS (SQLite)\nCREATE TABLE IF NOT EXISTS homens_de_deus (\n    id TEXT PRIMARY KEY,\n    nome TEXT NOT NULL,\n    descricao TEXT NOT NULL,\n    imagem TEXT,\n    era TEXT DEFAULT 'Contemporâneo',\n    birth_and_death TEXT,\n    main_legacy TEXT,\n    bible_verse TEXT,\n    created_at DATETIME DEFAULT CURRENT_TIMESTAMP\n);`,
+    dispositivos: `-- TABELA DE DISPOSITIVOS INSTALADOS (SQLite)\nCREATE TABLE IF NOT EXISTS dispositivos (\n    id TEXT PRIMARY KEY,\n    device_id TEXT NOT NULL,\n    name TEXT DEFAULT 'Visitante Anónimo',\n    os TEXT DEFAULT 'Desconhecido',\n    browser TEXT DEFAULT 'Desconhecido',\n    is_pwa INTEGER DEFAULT 0,\n    device_type TEXT DEFAULT 'Computador (Desktop)',\n    installed_at DATETIME DEFAULT CURRENT_TIMESTAMP,\n    last_active_at DATETIME DEFAULT CURRENT_TIMESTAMP\n);`,
+    livros: `-- TABELA DE LIVROS E DOWNLOADS (SQLite)\nCREATE TABLE IF NOT EXISTS livres (\n    id TEXT PRIMARY KEY,\n    titulo TEXT NOT NULL,\n    autor TEXT NOT NULL,\n    descricao TEXT NOT NULL,\n    preco TEXT DEFAULT 'Grátis',\n    paginas INTEGER DEFAULT 0,\n    editora TEXT DEFAULT 'Escola da Fé',\n    foto_capa TEXT,\n    download_url TEXT,\n    created_at DATETIME DEFAULT CURRENT_TIMESTAMP\n);`
   }
 };
 
@@ -1620,6 +1715,7 @@ function Home({
     { label: "Nomes Bíblicos", count: "100+", icon: <Search size={24} />, color: "bg-blue-500", path: "/dicionario" },
     { label: "Lugares & Biografias", count: "50+", icon: <MapPin size={24} />, color: "bg-purple-500", path: "/historias" },
     { label: "Lições do Curso", count: "Completo", icon: <GraduationCap size={24} />, color: "bg-emerald-500", path: "/curso" },
+    ...(isAdmin ? [{ label: "Usuários Ativos", count: "Monitor", icon: <Monitor size={24} className="text-emerald-400" />, color: "bg-[#0b132b]", path: "/usuarios" }] : []),
     { label: "Os Meus Favoritos", count: "Caderno ⭐", icon: <Star size={24} className="text-[#cfaf72] fill-[#cfaf72]" />, color: "bg-[#0b132b] dark:bg-[#1C2541]/80", path: "/favoritos" },
     { label: "Apoia a Missão", count: "Ajude 💙", icon: <Heart size={24} />, color: "bg-pink-500 animate-pulse", path: "/apoio" },
   ];
@@ -2165,6 +2261,46 @@ function Home({
                 />
               </div>
               <div className="space-y-2">
+                <label className="text-xs font-black text-heading uppercase tracking-wider block">📱 Chave Pix</label>
+                <input
+                  type="text"
+                  value={(supportDetails as any).pix || ""}
+                  onChange={(e) => setSupportDetails((prev: any) => ({ ...prev, pix: e.target.value }))}
+                  placeholder="Chave Pix"
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 py-3.5 px-5 rounded-2xl focus:outline-none focus:border-accent text-sm font-semibold"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-black text-heading uppercase tracking-wider block">💳 Depósito Visa</label>
+                <input
+                  type="text"
+                  value={(supportDetails as any).visa || ""}
+                  onChange={(e) => setSupportDetails((prev: any) => ({ ...prev, visa: e.target.value }))}
+                  placeholder="Número de depósito VISA"
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 py-3.5 px-5 rounded-2xl focus:outline-none focus:border-accent text-sm font-semibold"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-black text-heading uppercase tracking-wider block">💰 PayPal (E-mail ou link)</label>
+                <input
+                  type="text"
+                  value={(supportDetails as any).paypal || ""}
+                  onChange={(e) => setSupportDetails((prev: any) => ({ ...prev, paypal: e.target.value }))}
+                  placeholder="E-mail ou link de pagamento PayPal"
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 py-3.5 px-5 rounded-2xl focus:outline-none focus:border-accent text-sm font-semibold"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-black text-heading uppercase tracking-wider block">📲 Conta M-Pesa</label>
+                <input
+                  type="text"
+                  value={(supportDetails as any).mpesa || ""}
+                  onChange={(e) => setSupportDetails((prev: any) => ({ ...prev, mpesa: e.target.value }))}
+                  placeholder="Ex: 84XXXXXXX ou similar"
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 py-3.5 px-5 rounded-2xl focus:outline-none focus:border-accent text-sm font-semibold"
+                />
+              </div>
+              <div className="space-y-2 md:col-span-3">
                 <label className="text-xs font-black text-heading uppercase tracking-wider block">🔗 Link Oficial do Aplicativo</label>
                 <input
                   type="text"
@@ -2191,7 +2327,11 @@ function Home({
                       { chave: "terms_text", valor: termsText || "" },
                       { chave: "support_titular", valor: supportDetails.titular || "" },
                       { chave: "support_iban", valor: supportDetails.iban || "" },
-                      { chave: "support_app_link", valor: (supportDetails as any).appLink || "" }
+                      { chave: "support_app_link", valor: (supportDetails as any).appLink || "" },
+                      { chave: "support_pix", valor: (supportDetails as any).pix || "" },
+                      { chave: "support_visa", valor: (supportDetails as any).visa || "" },
+                      { chave: "support_paypal", valor: (supportDetails as any).paypal || "" },
+                      { chave: "support_mpesa", valor: (supportDetails as any).mpesa || "" }
                     ];
                     const res = await fetch("/api/db/config/save", {
                       method: "POST",
@@ -2380,6 +2520,18 @@ function Home({
                   )}
                 >
                   🔥 Homens de Deus
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveSqlTable("dispositivos")}
+                  className={cn(
+                    "px-4.5 py-3 rounded-xl border transition-all uppercase tracking-wider text-xs font-black",
+                    activeSqlTable === "dispositivos"
+                      ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-500 shadow-md"
+                      : "border-border-light dark:border-border-dark text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
+                  )}
+                >
+                  💻 Dispositivos / Instalados
                 </button>
               </div>
 
@@ -4198,8 +4350,8 @@ function ApoiaMissao({
   setSupportDetails, 
   isAdmin 
 }: { 
-  supportDetails: { banco: string; titular: string; conta: string; iban: string; transferencia: string; appLink?: string };
-  setSupportDetails?: React.Dispatch<React.SetStateAction<{ banco: string; titular: string; conta: string; iban: string; transferencia: string; appLink?: string }>>;
+  supportDetails: { banco: string; titular: string; conta: string; iban: string; transferencia: string; appLink?: string; pix?: string; visa?: string; paypal?: string; mpesa?: string };
+  setSupportDetails?: React.Dispatch<React.SetStateAction<{ banco: string; titular: string; conta: string; iban: string; transferencia: string; appLink?: string; pix?: string; visa?: string; paypal?: string; mpesa?: string }>>;
   isAdmin?: boolean;
 }) {
   const [copiedField, setCopiedField] = useState<string | null>(null);
@@ -4218,7 +4370,11 @@ function ApoiaMissao({
   const fields = [
     { label: "Titular", value: supportDetails.titular, icon: "👤", key: "titular" },
     { label: "IBAN", value: supportDetails.iban, icon: "📄", key: "iban" },
-  ];
+    { label: "Pix", value: (supportDetails as any).pix, icon: "📱", key: "pix" },
+    { label: "Visa", value: (supportDetails as any).visa, icon: "💳", key: "visa" },
+    { label: "PayPal", value: (supportDetails as any).paypal, icon: "💰", key: "paypal" },
+    { label: "M-Pesa", value: (supportDetails as any).mpesa, icon: "📲", key: "mpesa" },
+  ].filter(f => f.value && f.value.trim() !== "");
 
   return (
     <motion.div
@@ -4291,6 +4447,50 @@ function ApoiaMissao({
                 />
               </div>
 
+              <div className="space-y-2">
+                <label className="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 block">📱 Chave Pix</label>
+                <input
+                  type="text"
+                  value={supportDetails.pix || ""}
+                  onChange={(e) => setSupportDetails(prev => ({ ...prev, pix: e.target.value }))}
+                  placeholder="Ex: seuemail@pix.com ou telefone"
+                  className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 py-3 px-4 rounded-xl focus:outline-none focus:border-accent text-sm font-semibold shadow-sm"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 block">💳 Cartão Visa</label>
+                <input
+                  type="text"
+                  value={supportDetails.visa || ""}
+                  onChange={(e) => setSupportDetails(prev => ({ ...prev, visa: e.target.value }))}
+                  placeholder="Ex: Dados ou número para depósito Visa"
+                  className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 py-3 px-4 rounded-xl focus:outline-none focus:border-accent text-sm font-semibold shadow-sm"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 block">💰 Conta PayPal</label>
+                <input
+                  type="text"
+                  value={supportDetails.paypal || ""}
+                  onChange={(e) => setSupportDetails(prev => ({ ...prev, paypal: e.target.value }))}
+                  placeholder="Ex: Link do PayPal ou email"
+                  className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 py-3 px-4 rounded-xl focus:outline-none focus:border-accent text-sm font-semibold shadow-sm"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 block">📲 Conta M-Pesa</label>
+                <input
+                  type="text"
+                  value={supportDetails.mpesa || ""}
+                  onChange={(e) => setSupportDetails(prev => ({ ...prev, mpesa: e.target.value }))}
+                  placeholder="Ex: Número para transferência M-Pesa"
+                  className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 py-3 px-4 rounded-xl focus:outline-none focus:border-accent text-sm font-semibold shadow-sm"
+                />
+              </div>
+
               <div className="space-y-2 md:col-span-2">
                 <label className="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 block">🔗 Link para Partilhar o Aplicativo</label>
                 <input
@@ -4310,7 +4510,11 @@ function ApoiaMissao({
                     const payload = [
                       { chave: "support_titular", valor: supportDetails.titular || "" },
                       { chave: "support_iban", valor: supportDetails.iban || "" },
-                      { chave: "support_app_link", valor: (supportDetails as any).appLink || "" }
+                      { chave: "support_app_link", valor: (supportDetails as any).appLink || "" },
+                      { chave: "support_pix", valor: (supportDetails as any).pix || "" },
+                      { chave: "support_visa", valor: (supportDetails as any).visa || "" },
+                      { chave: "support_paypal", valor: (supportDetails as any).paypal || "" },
+                      { chave: "support_mpesa", valor: (supportDetails as any).mpesa || "" }
                     ];
                     await fetch("/api/db/config/save", {
                       method: "POST",
@@ -4485,6 +4689,83 @@ function ApoiaMissao({
 function AppContent({ isDark, theme, setTheme }: { isDark: boolean, theme: "light" | "dark" | "system", setTheme: (val: "light" | "dark" | "system") => void }) {
   const location = useLocation();
 
+  // state to manage visitor devices logged inside the administrators dashboard
+  const [dispositivos, setDispositivos] = useState<any[]>([]);
+
+  // auto registers device logs inside the backend or local Fallback
+  const registerDeviceActivity = async (customName?: string) => {
+    try {
+      let deviceId = localStorage.getItem("escola_da_fe_device_id");
+      if (!deviceId) {
+        deviceId = "dev_" + Math.random().toString(36).substring(2, 15);
+        localStorage.setItem("escola_da_fe_device_id", deviceId);
+      }
+
+      let os = "Desconhecido";
+      const userAgent = navigator.userAgent;
+      if (userAgent.indexOf("Win") !== -1) os = "Windows";
+      else if (userAgent.indexOf("Mac") !== -1) os = "macOS";
+      else if (userAgent.indexOf("Linux") !== -1) os = "Linux";
+      else if (userAgent.indexOf("Android") !== -1) os = "Android";
+      else if (userAgent.indexOf("like Mac") !== -1 || userAgent.indexOf("iPhone") !== -1) os = "iOS";
+
+      let browser = "Desconhecido";
+      if (userAgent.indexOf("Chrome") !== -1) browser = "Chrome";
+      else if (userAgent.indexOf("Safari") !== -1 && userAgent.indexOf("Chrome") === -1) browser = "Safari";
+      else if (userAgent.indexOf("Firefox") !== -1) browser = "Firefox";
+      else if (userAgent.indexOf("Edge") !== -1) browser = "Edge";
+
+      let deviceType = "Computador (Desktop)";
+      if (/Mobi|Android|iPhone|iPad|Tablet/i.test(userAgent)) {
+        deviceType = /iPad|Tablet/i.test(userAgent) ? "Tablet" : "Telemóvel (Mobile)";
+      }
+
+      // @ts-ignore
+      const isPwa = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone || false;
+
+      const currentName = customName || localStorage.getItem("escola_da_fe_user_name") || "Visitante Anónimo";
+
+      const payload = {
+        id: deviceId,
+        device_id: deviceId,
+        name: currentName,
+        os,
+        browser,
+        is_pwa: isPwa,
+        device_type: deviceType,
+        last_active_at: new Date().toISOString()
+      };
+
+      console.log("[Dispositivo Registro] Enviando payload:", payload);
+      const response = await fetch("/api/db/dispositivos/add", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      if (response.ok) {
+        console.log("[Dispositivo Registro] Sincronizado!");
+      }
+    } catch (e: any) {
+      console.warn("[Dispositivo Registro] Erro de rede ou indisponível:", e.message);
+    }
+  };
+
+  useEffect(() => {
+    // Run initial register on boot
+    registerDeviceActivity();
+
+    // Listen to profile name changes inside header component to instantly sync
+    const handleProfileRegister = (e: any) => {
+      if (e.detail && e.detail.name) {
+        registerDeviceActivity(e.detail.name);
+      }
+    };
+    window.addEventListener("register-user-device", handleProfileRegister);
+    return () => {
+      window.removeEventListener("register-user-device", handleProfileRegister);
+    };
+  }, []);
+
   // Dynamic links and support channels
   const [socialLinks, setSocialLinks] = useState(() => {
     try {
@@ -4516,7 +4797,11 @@ function AppContent({ isDark, theme, setTheme }: { isDark: boolean, theme: "ligh
       conta: "",
       iban: "AO06.0040.0000.3948.2930.2913.3",
       transferencia: "",
-      appLink: window.location.origin
+      appLink: window.location.origin,
+      pix: "",
+      visa: "",
+      paypal: "",
+      mpesa: ""
     };
     try {
       const saved = localStorage.getItem("escola_da_fe_support_details");
@@ -4759,6 +5044,32 @@ function AppContent({ isDark, theme, setTheme }: { isDark: boolean, theme: "ligh
     }
   });
 
+  const [livros, setLivros] = useState<any[]>(() => {
+    try {
+      const saved = localStorage.getItem("escola_da_fe_livros");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          const deletedIds = JSON.parse(localStorage.getItem("escola_da_fe_deleted_ids") || "[]");
+          const merged = [...parsed];
+          DEFAULT_LIVROS.forEach(def => {
+            if (!merged.some(m => m.id === def.id) && !deletedIds.includes(def.id)) {
+              merged.push(def);
+            }
+          });
+          return merged;
+        }
+      }
+      return DEFAULT_LIVROS;
+    } catch {
+      return DEFAULT_LIVROS;
+    }
+  });
+
+  useEffect(() => {
+    localStorage.setItem("escola_da_fe_livros", JSON.stringify(livros));
+  }, [livros]);
+
   // Sync to localStorages
   useEffect(() => {
     localStorage.setItem("escola_da_fe_themes", JSON.stringify(themes));
@@ -4850,6 +5161,18 @@ function AppContent({ isDark, theme, setTheme }: { isDark: boolean, theme: "ligh
         autor: item.author || "Lemos Faya de Arcanjo",
         imagem_url: item.imageUrl || ""
       };
+    } else if (table === "livros") {
+      dbPayload = {
+        id: item.id,
+        titulo: item.titulo,
+        autor: item.autor,
+        descricao: item.descricao,
+        preco: item.preco || "Grátis",
+        paginas: item.paginas || 0,
+        editora: item.editora || "Escola da Fé",
+        foto_capa: item.foto_capa || "",
+        download_url: item.download_url || ""
+      };
     }
 
     if (!dbPayload) return;
@@ -4940,7 +5263,9 @@ function AppContent({ isDark, theme, setTheme }: { isDark: boolean, theme: "ligh
               teologia,
               curso,
               postagens,
-              configuracoes
+              configuracoes,
+              dispositivosData,
+              livrosData
             ] = await Promise.all([
               safeDirectQuery("estudos_basicos"),
               safeDirectQuery("dicionario_biblico"),
@@ -4948,7 +5273,9 @@ function AppContent({ isDark, theme, setTheme }: { isDark: boolean, theme: "ligh
               safeDirectQuery("teologia_doutrinas"),
               safeDirectQuery("licoes_curso"),
               safeDirectQuery("postagens"),
-              safeDirectQuery("configuracoes_sociais")
+              safeDirectQuery("configuracoes_sociais"),
+              safeDirectQuery("dispositivos"),
+              safeDirectQuery("livros")
             ]);
 
             resultData = {
@@ -4958,7 +5285,9 @@ function AppContent({ isDark, theme, setTheme }: { isDark: boolean, theme: "ligh
               teologia,
               curso,
               postagens,
-              configuracoes
+              configuracoes,
+              dispositivos: dispositivosData,
+              livros: livrosData
             };
             syncMethod = "DIRECT_CLIENT";
             console.log("[Supabase Sync] Sincronização direta com Supabase bem-sucedida (Modo Client-Only ativo)!");
@@ -4973,8 +5302,9 @@ function AppContent({ isDark, theme, setTheme }: { isDark: boolean, theme: "ligh
       if (resultData) {
         setDbStatus("online");
         setRetryDelay(3000); // Reseta retentativas em caso de sucesso
-        let { estudos, dicionario, historias, teologia, curso, postagens, comunicados, configuracoes } = resultData || {};
+        let { estudos, dicionario, historias, teologia, curso, postagens, comunicados, configuracoes, dispositivos: dispositivosData, livros: deconstructedLivros } = resultData || {};
         let actualPostagens = postagens || comunicados;
+        let actualLivros = deconstructedLivros || [];
 
         // Garante que todas as coleções sejam arrays válidos antes de qualquer operação
         estudos = Array.isArray(estudos) ? estudos : [];
@@ -4984,6 +5314,10 @@ function AppContent({ isDark, theme, setTheme }: { isDark: boolean, theme: "ligh
         curso = Array.isArray(curso) ? curso : [];
         actualPostagens = Array.isArray(actualPostagens) ? actualPostagens : [];
         configuracoes = Array.isArray(configuracoes) ? configuracoes : [];
+        actualLivros = Array.isArray(actualLivros) ? actualLivros : [];
+        
+        const actualDispositivos = Array.isArray(dispositivosData) ? dispositivosData : [];
+        setDispositivos(actualDispositivos);
 
         const deletedIds = JSON.parse(localStorage.getItem("escola_da_fe_deleted_ids") || "[]");
 
@@ -5261,6 +5595,41 @@ function AppContent({ isDark, theme, setTheme }: { isDark: boolean, theme: "ligh
           return merged;
         });
 
+        // 6.5 Map Livros
+        const mappedLivros = (actualLivros || [])
+          .filter((row: any) => {
+            if (deletedIds.includes(row.id)) {
+              fetch(`/api/db/livros/${row.id}`, { method: "DELETE" }).catch(() => {});
+              return false;
+            }
+            return true;
+          })
+          .map((row: any) => ({
+            id: row.id,
+            titulo: row.titulo,
+            autor: row.autor,
+            descricao: row.descricao,
+            preco: row.preco || "Grátis",
+            paginas: Number(row.paginas) || 0,
+            editora: row.editora || "Escola da Fé",
+            foto_capa: row.foto_capa || "",
+            download_url: row.download_url || ""
+          }));
+        setLivros((prev: any[]) => {
+          const merged = [...mappedLivros];
+          (prev || []).forEach(localItem => {
+            if (!merged.some(m => m.id === localItem.id) && !deletedIds.includes(localItem.id)) {
+              merged.push(localItem);
+            }
+          });
+          DEFAULT_LIVROS.forEach(def => {
+            if (!merged.some(m => m.id === def.id) && !deletedIds.includes(def.id)) {
+              merged.push(def);
+            }
+          });
+          return merged;
+        });
+
         // 7. General Configurations Mapping
         if (configuracoes && configuracoes.length > 0) {
           setSocialLinks((prev: any) => {
@@ -5280,6 +5649,10 @@ function AppContent({ isDark, theme, setTheme }: { isDark: boolean, theme: "ligh
               if (row.chave === "support_titular") mappedSupport.titular = row.valor;
               else if (row.chave === "support_iban") mappedSupport.iban = row.valor;
               else if (row.chave === "support_app_link") mappedSupport.appLink = row.valor;
+              else if (row.chave === "support_pix") mappedSupport.pix = row.valor;
+              else if (row.chave === "support_visa") mappedSupport.visa = row.valor;
+              else if (row.chave === "support_paypal") mappedSupport.paypal = row.valor;
+              else if (row.chave === "support_mpesa") mappedSupport.mpesa = row.valor;
             });
             return mappedSupport;
           });
@@ -5348,6 +5721,16 @@ function AppContent({ isDark, theme, setTheme }: { isDark: boolean, theme: "ligh
           if (!isDefault && !deletedIds.includes(localItem.id)) {
             if (!actualPostagens.some((r: any) => r.id === localItem.id)) {
               pushItemToDb("postagens", localItem);
+            }
+          }
+        });
+
+        // Livros fallback push
+        livros.forEach((localItem: any) => {
+          const isDefault = DEFAULT_LIVROS.some(def => def.id === localItem.id);
+          if (!isDefault && !deletedIds.includes(localItem.id)) {
+            if (!actualLivros.some((r: any) => r.id === localItem.id)) {
+              pushItemToDb("livros", localItem);
             }
           }
         });
@@ -5582,9 +5965,11 @@ function AppContent({ isDark, theme, setTheme }: { isDark: boolean, theme: "ligh
               <Route path="/teologia" element={<Theology onSelectItem={handleSelectItem} theologyTopics={theologyTopics} setTheologyTopics={setTheologyTopics} isAdmin={isAdmin} triggerConfirm={triggerConfirm} />} />
               <Route path="/atributos" element={<AttributesOfGodView />} />
               <Route path="/curso" element={<Course onSelectItem={handleSelectItem} courseLessons={courseLessons} setCourseLessons={setCourseLessons} isAdmin={isAdmin} triggerConfirm={triggerConfirm} />} />
+              <Route path="/livros" element={<LivrosView isAdmin={isAdmin} livros={livros} setLivros={setLivros} triggerConfirm={triggerConfirm} />} />
               <Route path="/comunidade" element={<Community isAdmin={isAdmin} triggerConfirm={triggerConfirm} />} />
               <Route path="/apoio" element={<ApoiaMissao supportDetails={supportDetails} setSupportDetails={setSupportDetails} isAdmin={isAdmin} />} />
               <Route path="/favoritos" element={<FavoritesView onSelectItem={handleSelectItem} />} />
+              <Route path="/usuarios" element={<UsersView isAdmin={isAdmin} dispositivos={dispositivos} onRefresh={syncWithDatabase} triggerConfirm={triggerConfirm} />} />
             </Routes>
           </AnimatePresence>
         </main>

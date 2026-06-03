@@ -36,7 +36,11 @@ INSERT INTO configuracoes_sociais (chave, valor) VALUES
 ('youtube', 'https://youtube.com/escoladafe'),
 ('facebook', 'https://www.facebook.com/lemosmabiala.faya/'),
 ('privacy_text', 'A Escola da Fé tem compromisso máximo com a privacidade de dados...'),
-('terms_text', 'Ao utilizar a plataforma Escola da Fé, você concorda com...')
+('terms_text', 'Ao utilizar a plataforma Escola da Fé, você concorda com...'),
+('support_pix', ''),
+('support_visa', ''),
+('support_paypal', ''),
+('support_mpesa', '')
 ON CONFLICT (chave) DO NOTHING;
 
 -- 4. TABELA DE PROGRESSO DO ESTUDANTE
@@ -162,6 +166,19 @@ CREATE TABLE IF NOT EXISTS ads (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+-- 15. TABELA DE DISPOSITIVOS / USUÁRIOS ATIVOS (Para monitorização do Administrador)
+CREATE TABLE IF NOT EXISTS dispositivos (
+    id VARCHAR(100) PRIMARY KEY,
+    device_id VARCHAR(100) NOT NULL,
+    name VARCHAR(150) DEFAULT 'Visitante Anónimo',
+    os VARCHAR(50) DEFAULT 'Desconhecido',
+    browser VARCHAR(50) DEFAULT 'Desconhecido',
+    is_pwa BOOLEAN DEFAULT FALSE,
+    device_type VARCHAR(100) DEFAULT 'Computador (Desktop)',
+    installed_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    last_active_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
 
 -- ATIVAR ROW LEVEL SECURITY (RLS)
 ALTER TABLE homens_de_deus ENABLE ROW LEVEL SECURITY;
@@ -177,6 +194,7 @@ ALTER TABLE posts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE comments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE reactions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE ads ENABLE ROW LEVEL SECURITY;
+ALTER TABLE dispositivos ENABLE ROW LEVEL SECURITY;
 
 
 -- DEFINIR POLÍTICAS DE SEGURANÇA (RLS) DE FORMA REENTRANTE (EVITA ERROS SE RE-EXECUTADO)
@@ -255,6 +273,10 @@ DROP POLICY IF EXISTS "Controle total para administradores ads" ON ads;
 DROP POLICY IF EXISTS "Acesso público irrestrito ads" ON ads;
 CREATE POLICY "Acesso público irrestrito ads" ON ads FOR ALL USING (true) WITH CHECK (true);
 
+-- 14. Dispositivos (Usuários ativos)
+DROP POLICY IF EXISTS "Acesso público irrestrito dispositivos" ON dispositivos;
+CREATE POLICY "Acesso público irrestrito dispositivos" ON dispositivos FOR ALL USING (true) WITH CHECK (true);
+
 
 -- ATIVAR SINCRONIZAÇÃO EM TEMPO REAL NO SUPABASE DE FORMA TOTALMENTE SEGURA E LIVRE DE ERROS
 -- Esse bloco em PL/pgSQL executa de forma dinâmica para evitar o erro "already member of publication" caso os comandos sejam re-executados.
@@ -272,7 +294,9 @@ DECLARE
         'posts',
         'comments',
         'reactions',
-        'ads'
+        'ads',
+        'dispositivos',
+        'livros'
     ];
     tabela TEXT;
 BEGIN
@@ -315,4 +339,31 @@ ON CONFLICT (id) DO NOTHING;
 INSERT INTO ads (id, title, image_url, link, type, active) VALUES
 ('inicial_ad_1', 'Canal Oficial Escola da Fé - Inscreva-se para Novidades', 'https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?auto=format&fit=crop&q=80&w=600', 'https://youtube.com/escoladafe', 'native', true),
 ('inicial_ad_2', 'Visite o nosso grupo exclusivo de WhatsApp de Intercessão', 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&q=80&w=600', 'https://chat.whatsapp.com/ExemploGrupo', 'banner', true)
+ON CONFLICT (id) DO NOTHING;
+
+-- 11. TABELA DE LIVROS E DOWNLOADS GRATUITOS
+CREATE TABLE IF NOT EXISTS livros (
+    id VARCHAR(100) PRIMARY KEY,
+    titulo VARCHAR(255) NOT NULL,
+    autor VARCHAR(150) NOT NULL,
+    descricao TEXT NOT NULL,
+    preco VARCHAR(50) DEFAULT 'Grátis',
+    paginas INT DEFAULT 0,
+    editora VARCHAR(150) DEFAULT 'Escola da Fé',
+    foto_capa TEXT,
+    download_url TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ATIVAR ROW LEVEL SECURITY (RLS) NO SUPABASE
+ALTER TABLE livros ENABLE ROW LEVEL SECURITY;
+
+-- PERMISSÃO DE ACESSO PÚBLICO INTEGRAL (VISTO QUE NÃO EXIGE CONTAS DE ACESSO PREMIUM)
+DROP POLICY IF EXISTS "Acesso público irrestrito livros" ON livros;
+CREATE POLICY "Acesso público irrestrito livros" ON livros FOR ALL USING (true) WITH CHECK (true);
+
+-- SEED DOS LIVROS INICIAIS DA ESCOLA DA FÉ
+INSERT INTO livros (id, titulo, autor, descricao, preco, paginas, editora, foto_capa, download_url) VALUES
+('livro_institutos', 'As Institutas da Religião Cristã', 'João Calvino', 'Uma das obras teológicas mais influentes da história do Cristianismo. Esta magnum opus de João Calvino aborda de forma profunda e exaustiva a teologia bíblica e reformada, detalhando a soberania de Deus, a redenção de Cristo e o papel da Igreja na Terra.', 'Grátis (Digital)', 650, 'Escola da Fé', 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&q=80&w=600', 'https://www.monergismo.com/textos/institutas/As-Institutas_Calvino_Volume-1.pdf'),
+('livro_ortodoxia', 'Ortodoxia', 'G. K. Chesterton', 'O célebre ensaio de G. K. Chesterton onde compartilha sua jornada intelectual e espiritual até constatar que os enigmas formulados pelo pensamento secular encontram sua resposta definitiva e majestosa no enigma divino da transcendência de Cristo.', 'Grátis (Físico/Digital)', 190, 'Livros da Fé', 'https://images.unsplash.com/photo-1512820790803-83ca734da794?auto=format&fit=crop&q=80&w=600', 'http://www.gutenberg.org/files/130/130-h/130-h.htm')
 ON CONFLICT (id) DO NOTHING;
