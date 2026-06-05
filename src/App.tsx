@@ -995,7 +995,6 @@ function Navbar({
     { name: "Teologia", path: "/teologia", icon: <Library size={20} /> },
     { name: "Atributos", path: "/atributos", icon: <Sparkles size={20} /> },
     { name: "Curso", path: "/curso", icon: <GraduationCap size={20} /> },
-    ...(isAdmin || enabledTabs?.comunidade ? [{ name: "Mural", path: "/comunidade", icon: <MessageCircle size={20} /> }] : []),
     ...(isAdmin || enabledTabs?.suporte ? [{ name: "Suporte", path: "/suporte", icon: <LifeBuoy size={20} className="text-cyan-400" /> }] : []),
     { name: "Favoritos", path: "/favoritos", icon: <Star size={20} className="text-amber-500" /> },
     { name: "Apoia a Missão", path: "/apoio", icon: <Heart size={20} className="text-pink-500 animate-pulse" /> },
@@ -1445,17 +1444,7 @@ function Navbar({
           <span className="mt-1 font-sans font-extrabold uppercase text-[9px]">Curso</span>
         </Link>
 
-        <Link 
-          to="/comunidade" 
-          onClick={() => setIsOpen(false)}
-          className={cn(
-            "flex flex-col items-center justify-center flex-grow py-1 text-[10px] font-black tracking-wide transition-all active:scale-95",
-            location.pathname === "/comunidade" ? "text-accent" : "text-slate-400 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white"
-          )}
-        >
-          <MessageCircle size={18} className={location.pathname === "/comunidade" ? "scale-110 text-accent transition-transform" : "text-slate-450 dark:text-slate-400"} />
-          <span className="mt-1 font-sans font-extrabold uppercase text-[9px]">Mural</span>
-        </Link>
+
 
         <button 
           onClick={() => setIsOpen(!isOpen)}
@@ -2178,43 +2167,7 @@ function Home({
             <h4 className="text-xs font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">0. Controlo de Exibição de Abas para Alunos (Mural, Livraria e Suporte)</h4>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               
-              {/* Mural Tab Toggle */}
-              <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-[#cfaf72]/10 dark:border-white/5 shadow-sm flex flex-col justify-between gap-4">
-                <div className="flex items-start gap-3">
-                  <div className="p-3 bg-amber-500/10 text-amber-500 rounded-2xl shrink-0">
-                    <MessageCircle size={22} />
-                  </div>
-                  <div>
-                    <h5 className="text-sm font-black text-heading">Aba Mural / Comunidade</h5>
-                    <p className="text-[11px] text-slate-400 dark:text-slate-400 mt-1 font-semibold leading-relaxed">Habilita ou oculta o feed da comunidade e o mural geral de novidades.</p>
-                  </div>
-                </div>
-                <div className="flex items-center justify-between border-t border-slate-100/15 pt-4">
-                  <span className={`text-[11px] font-black ${enabledTabs?.comunidade ? 'text-emerald-400' : 'text-slate-400'}`}>
-                    {enabledTabs?.comunidade ? '● ATIVADO (Visível)' : '○ DESATIVADO (Oculto)'}
-                  </span>
-                  <label className="relative inline-flex items-center cursor-pointer select-none">
-                    <input 
-                      type="checkbox" 
-                      className="sr-only peer" 
-                      checked={!!enabledTabs?.comunidade} 
-                      onChange={(e) => {
-                        const val = e.target.checked;
-                        setEnabledTabs((prev: any) => {
-                          const next = { ...prev, comunidade: val };
-                          fetch("/api/db/configuracoes/add", {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({ chave: "tab_comunidade", valor: val ? "true" : "false" })
-                          }).catch(err => console.warn(err));
-                          return next;
-                        });
-                      }}
-                    />
-                    <div className="w-11 h-6 bg-slate-200 dark:bg-slate-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#cfaf72]"></div>
-                  </label>
-                </div>
-              </div>
+
 
               {/* Suporte Tab Toggle */}
               <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-[#cfaf72]/10 dark:border-white/5 shadow-sm flex flex-col justify-between gap-4">
@@ -5240,7 +5193,7 @@ function AppContent({ isDark, theme, setTheme }: { isDark: boolean, theme: "ligh
   // Database Connection & Synchronization Status State
   const [dbStatus, setDbStatus] = useState<"connecting" | "online" | "offline">("connecting");
   const [supabaseConfigMissing, setSupabaseConfigMissing] = useState(false);
-  const [retryDelay, setRetryDelay] = useState<number>(3000); // 3s initial reconnect interval
+  const [retryDelay, setRetryDelay] = useState<number>(15000); // 15s initial reconnect interval
 
 
   // Push individual item to DB (used for offline-to-online recovery)
@@ -5852,13 +5805,13 @@ function AppContent({ isDark, theme, setTheme }: { isDark: boolean, theme: "ligh
     }
   };
 
-  // 1. Initial sync & periodic syncing loop (runs every 15s)
+  // 1. Initial sync & periodic syncing loop (runs every 45s)
   useEffect(() => {
     syncWithDatabase();
 
     const handleOnline = () => {
       console.log("[Supabase Sync] Evento de rede ONLINE detectado. Forçando ressincronização imediata...");
-      setRetryDelay(3000); // Reseta retentativas
+      setRetryDelay(15000); // Reseta retentativas para 15s
       syncWithDatabase();
     };
 
@@ -5872,7 +5825,7 @@ function AppContent({ isDark, theme, setTheme }: { isDark: boolean, theme: "ligh
     const intervalId = setInterval(() => {
       console.log("[Supabase Sync] Sincronização periódica iniciada...");
       syncWithDatabase();
-    }, 15000);
+    }, 45000);
 
     window.addEventListener("online", handleOnline);
     window.addEventListener("focus", handleFocusOrVisible);
@@ -5892,7 +5845,7 @@ function AppContent({ isDark, theme, setTheme }: { isDark: boolean, theme: "ligh
     };
   }, []);
 
-  // 2. Automated connection self-healing retry engine (3s, 5s, 10s)
+  // 2. Automated connection self-healing retry engine (15s, 30s, 60s)
   useEffect(() => {
     let timeoutId: any = null;
     
@@ -5901,16 +5854,16 @@ function AppContent({ isDark, theme, setTheme }: { isDark: boolean, theme: "ligh
       timeoutId = setTimeout(() => {
         syncWithDatabase();
         
-        // Aplica incremento nas retentativas: 3s -> 5s -> 10s -> mantém 10s
+        // Aplica incremento nas retentativas: 15s -> 30s -> 60s -> mantém 60s
         setRetryDelay(prev => {
-          if (prev === 3000) return 5000;
-          if (prev === 5000) return 10000;
-          return 10000;
+          if (prev < 15000) return 15000;
+          if (prev === 15000) return 30000;
+          return 60000;
         });
       }, retryDelay);
     } else if (dbStatus === "online") {
-      // Reseta para 3 segundos se estiver totalmente conectado
-      setRetryDelay(3000);
+      // Reseta para 15 segundos se estiver totalmente conectado
+      setRetryDelay(15000);
     }
 
     return () => {
