@@ -1210,7 +1210,7 @@ function Navbar({
                 "transition-transform group-hover:scale-110 shrink-0",
                 location.pathname === item.path ? "text-[#cfaf72]" : "text-slate-400 group-hover:text-secondary dark:group-hover:text-white"
               )}>
-                {React.cloneElement(item.icon as React.ReactElement, { size: 14 })}
+                {React.cloneElement(item.icon as React.ReactElement<any>, { size: 14 })}
               </span>
               {item.name}
             </Link>
@@ -1588,7 +1588,7 @@ function Home({
   const [activeBioModal, setActiveBioModal] = useState<any | null>(null);
 
   const [activeSqlTab, setActiveSqlTab] = useState<"postgres" | "sqlite">("postgres");
-  const [activeSqlTable, setActiveSqlTable] = useState<"usuarios" | "postagens" | "redes" | "progresso" | "estudos" | "dicionario" | "teologia" | "curso" | "apoio" | "homens">("usuarios");
+  const [activeSqlTable, setActiveSqlTable] = useState<"usuarios" | "postagens" | "redes" | "progresso" | "estudos" | "dicionario" | "teologia" | "curso" | "apoio" | "homens" | "dispositivos">("usuarios");
   const [copied, setCopied] = useState(false);
 
   const handleCopySql = (code: string) => {
@@ -2660,7 +2660,7 @@ function Home({
                 className="group bg-card-light dark:bg-card-dark p-4 sm:p-5 md:p-6 rounded-3xl border border-border-light dark:border-border-dark hover:border-accent hover:shadow-2xl hover:-translate-y-2 transition-all flex flex-col items-center text-center shadow-xl w-full min-w-0"
               >
                 <div className={cn("w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 rounded-2xl flex items-center justify-center text-white mb-3 sm:mb-4 shadow-md group-hover:rotate-12 transition-all shrink-0", stat.color)}>
-                  {React.cloneElement(stat.icon as React.ReactElement, { size: 18 })}
+                  {React.cloneElement(stat.icon as React.ReactElement<any>, { size: 18 })}
                 </div>
                 <span className={cn(
                   "font-black text-heading mb-1 tracking-tight w-full px-1 break-words leading-none",

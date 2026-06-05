@@ -243,7 +243,7 @@ export default function FavoritesView({ onSelectItem }: FavoritesViewProps) {
         )}
 
         {/* List Grid Layout */}
-        <AnimatePresence mode="popLayoutContainer">
+        <AnimatePresence mode="popLayout">
           {filteredFavorites.length > 0 ? (
             <motion.div 
               layout

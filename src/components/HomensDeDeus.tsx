@@ -533,7 +533,11 @@ export default function HomensDeDeusView({
 
         if (activeChannel) {
           console.log("[Homens Realtime] Removendo canal anterior antes de restabelecer...");
-          await supabase.removeChannel(activeChannel);
+          try {
+            await supabase.removeChannel(activeChannel);
+          } catch (removeErr) {
+            console.warn("[Homens Realtime] Falha silenciada ao remover canal anterior (prosseguindo):", removeErr);
+          }
         }
 
         if (!supabase) {

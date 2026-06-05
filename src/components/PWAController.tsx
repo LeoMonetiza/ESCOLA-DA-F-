@@ -258,7 +258,7 @@ export default function PWAController() {
   };
 
   // Fast animation transition presets for lightness and speed
-  const fastTransition = { duration: 0.15, ease: "easeOut" };
+  const fastTransition: any = { duration: 0.15, ease: "easeOut" };
 
   return (
     <>

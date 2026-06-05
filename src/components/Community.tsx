@@ -259,7 +259,11 @@ export default function Community({
 
         if (subscription) {
           console.log("[Community Realtime] Removendo canal anterior antes de restabelecer...");
-          await supabase.removeChannel(subscription);
+          try {
+            await supabase.removeChannel(subscription);
+          } catch (removeErr) {
+            console.warn("[Community Realtime] Falha silenciada ao remover canal anterior (proseguindo):", removeErr);
+          }
         }
 
         console.log("[Community Realtime] Conectando ao canal de atualizações em tempo real...");

@@ -605,7 +605,7 @@ export default function SupportView({ isAdmin, triggerConfirm }: SupportViewProp
                   <h4 className="text-xl font-black text-heading">Conversas Ativas</h4>
                 </div>
                 <button 
-                  onClick={loadMessages}
+                  onClick={() => loadMessages(false)}
                   className="p-2 bg-slate-50 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 rounded-xl text-slate-500 dark:text-slate-400 transition-all cursor-pointer"
                   title="Sincronizar"
                 >
@@ -693,7 +693,7 @@ export default function SupportView({ isAdmin, triggerConfirm }: SupportViewProp
                   </div>
                 )}
                 <button 
-                  onClick={loadMessages}
+                  onClick={() => loadMessages(false)}
                   className="p-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 text-slate-600 dark:text-slate-400 rounded-xl transition-all cursor-pointer"
                   title="Recarregar histórico"
                 >
