@@ -19,7 +19,16 @@ try {
     key: (index: number): string | null => Object.keys(store)[index] || null,
     get length(): number { return Object.keys(store).length; }
   };
-  Object.defineProperty(window, "localStorage", { value: mockStorage, configurable: true, writable: true });
+  try {
+    Object.defineProperty(window, "localStorage", { value: mockStorage, configurable: true, writable: true });
+  } catch (err) {
+    console.warn("[SafeStorage] Failed to redefine window.localStorage via Object.defineProperty. Trying direct assignment.", err);
+    try {
+      (window as any).localStorage = mockStorage;
+    } catch (err2) {
+      console.error("[SafeStorage] Could not shim window.localStorage.", err2);
+    }
+  }
 }
 
 try {
@@ -37,7 +46,16 @@ try {
     key: (index: number): string | null => Object.keys(store)[index] || null,
     get length(): number { return Object.keys(store).length; }
   };
-  Object.defineProperty(window, "sessionStorage", { value: mockStorage, configurable: true, writable: true });
+  try {
+    Object.defineProperty(window, "sessionStorage", { value: mockStorage, configurable: true, writable: true });
+  } catch (err) {
+    console.warn("[SafeStorage] Failed to redefine window.sessionStorage via Object.defineProperty. Trying direct assignment.", err);
+    try {
+      (window as any).sessionStorage = mockStorage;
+    } catch (err2) {
+      console.error("[SafeStorage] Could not shim window.sessionStorage.", err2);
+    }
+  }
 }
 
 createRoot(document.getElementById('root')!).render(

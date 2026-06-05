@@ -33,7 +33,12 @@ export default function PWAController() {
     
     setIsIOS(ios);
     if (ios && !standalone) {
-      const dismissed = localStorage.getItem("escola_da_fe_ios_install_dismissed") === "true";
+      let dismissed = false;
+      try {
+        dismissed = localStorage.getItem("escola_da_fe_ios_install_dismissed") === "true";
+      } catch (e) {
+        console.warn("Could not read from localStorage on iOS install tip check:", e);
+      }
       if (!dismissed) {
         setShowIOSInstallTip(true);
       }
@@ -120,11 +125,20 @@ export default function PWAController() {
 
         if (!serverVersion) return;
 
-        const localVersion = localStorage.getItem("escola_da_fe_active_version");
+        let localVersion = null;
+        try {
+          localVersion = localStorage.getItem("escola_da_fe_active_version");
+        } catch (e) {
+          console.warn("Could not read localVersion from localStorage:", e);
+        }
 
         // Initial setup on first run
         if (!localVersion) {
-          localStorage.setItem("escola_da_fe_active_version", serverVersion);
+          try {
+            localStorage.setItem("escola_da_fe_active_version", serverVersion);
+          } catch (e) {
+            console.warn("Could not write localVersion to localStorage:", e);
+          }
           console.log("[PWA] Inicializado rastreador de versão:", serverVersion);
           return;
         }
@@ -369,7 +383,11 @@ export default function PWAController() {
                 <button
                   onClick={() => {
                     setShowIOSInstallTip(false);
-                    localStorage.setItem("escola_da_fe_ios_install_dismissed", "true");
+                    try {
+                      localStorage.setItem("escola_da_fe_ios_install_dismissed", "true");
+                    } catch (e) {
+                      console.warn("Could not save to localStorage:", e);
+                    }
                   }}
                   className="p-1.5 hover:bg-white/10 text-slate-400 hover:text-white rounded-lg transition-colors cursor-pointer"
                 >

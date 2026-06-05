@@ -44,15 +44,16 @@ import {
   Image,
   Share2,
   Star,
-  Bookmark
+  Bookmark,
+  LifeBuoy
 } from "lucide-react";
 import { cn } from "@/src/lib/utils";
 import { BIBLICAL_THEMES, BIBLICAL_NAMES, BIBLICAL_STORIES, THEOLOGY_TOPICS, BASIC_COURSE } from "@/src/data/biblicalData";
-import AITeacher from "./components/AITeacher";
 import HomensDeDeusView from "./components/HomensDeDeus";
 import UsersView from "./components/UsersView";
 import Community from "./components/Community";
 import LivrosView, { DEFAULT_LIVROS } from "./components/LivrosView";
+import SupportView from "./components/SupportView";
 import PWAController from "./components/PWAController";
 import LivretoManager from "./components/LivretoManager";
 import AttributesOfGodView from "./components/AttributesOfGodView";
@@ -953,7 +954,8 @@ function Navbar({
   dbStatus, 
   onSync, 
   supabaseConfigMissing,
-  onRestoreDefaults
+  onRestoreDefaults,
+  enabledTabs
 }: { 
   isDark: boolean, 
   theme?: "light" | "dark" | "system", 
@@ -964,7 +966,8 @@ function Navbar({
   dbStatus: "connecting" | "online" | "offline", 
   onSync: () => void, 
   supabaseConfigMissing?: boolean,
-  onRestoreDefaults?: () => void
+  onRestoreDefaults?: () => void,
+  enabledTabs: { comunidade: boolean, livros: boolean, suporte: boolean }
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
@@ -973,7 +976,13 @@ function Navbar({
   const [errorMsg, setErrorMsg] = useState("");
 
   // Custom User Profile states
-  const [userName, setUserName] = useState(() => localStorage.getItem("escola_da_fe_user_name") || "");
+  const [userName, setUserName] = useState(() => {
+    try {
+      return localStorage.getItem("escola_da_fe_user_name") || "";
+    } catch {
+      return "";
+    }
+  });
   const [isEditingName, setIsEditingName] = useState(false);
   const [tempName, setTempName] = useState("");
   
@@ -985,9 +994,9 @@ function Navbar({
     { name: "Homens de Deus", path: "/homens-deus", icon: <Users size={20} /> },
     { name: "Teologia", path: "/teologia", icon: <Library size={20} /> },
     { name: "Atributos", path: "/atributos", icon: <Sparkles size={20} /> },
-    { name: "Livraria / Livros", path: "/livros", icon: <Library size={20} className="text-[#cfaf72]" /> },
     { name: "Curso", path: "/curso", icon: <GraduationCap size={20} /> },
-    { name: "Mural", path: "/comunidade", icon: <MessageCircle size={20} /> },
+    ...(isAdmin || enabledTabs?.comunidade ? [{ name: "Mural", path: "/comunidade", icon: <MessageCircle size={20} /> }] : []),
+    ...(isAdmin || enabledTabs?.suporte ? [{ name: "Suporte", path: "/suporte", icon: <LifeBuoy size={20} className="text-cyan-400" /> }] : []),
     { name: "Favoritos", path: "/favoritos", icon: <Star size={20} className="text-amber-500" /> },
     { name: "Apoia a Missão", path: "/apoio", icon: <Heart size={20} className="text-pink-500 animate-pulse" /> },
     ...(isAdmin ? [{ name: "Usuários Ativos", path: "/usuarios", icon: <Monitor size={20} className="text-emerald-400" /> }] : []),
@@ -1559,7 +1568,9 @@ function Home({
   termsText,
   setTermsText,
   supportDetails,
-  setSupportDetails
+  setSupportDetails,
+  enabledTabs,
+  setEnabledTabs
 }: { 
   onSelectItem: (item: any) => void;
   announcements: any[];
@@ -1574,6 +1585,8 @@ function Home({
   setTermsText: React.Dispatch<React.SetStateAction<string>>;
   supportDetails: { banco: string; titular: string; conta: string; iban: string; transferencia: string; appLink?: string };
   setSupportDetails: React.Dispatch<React.SetStateAction<{ banco: string; titular: string; conta: string; iban: string; transferencia: string; appLink?: string }>>;
+  enabledTabs: { comunidade: boolean; livros: boolean; suporte: boolean };
+  setEnabledTabs: React.Dispatch<React.SetStateAction<{ comunidade: boolean; livros: boolean; suporte: boolean }>>;
 }) {
   const [newTitle, setNewTitle] = useState("");
   const [newMessage, setNewMessage] = useState("");
@@ -1752,7 +1765,8 @@ function Home({
       </header>
 
       {/* MURAL DE AVISOS & NOVIDADES DA COMUNIDADE (Início Area Addition) */}
-      <section className="bg-gradient-to-br from-[#0b132b]/5 to-[#0b132b]/10 dark:from-slate-900/50 dark:to-slate-800/40 rounded-[2.5rem] sm:rounded-[3rem] p-5 sm:p-10 border border-[#cfaf72]/20 shadow-2xl relative overflow-hidden">
+      {(isAdmin || enabledTabs?.comunidade) && (
+        <section className="bg-gradient-to-br from-[#0b132b]/5 to-[#0b132b]/10 dark:from-slate-900/50 dark:to-slate-800/40 rounded-[2.5rem] sm:rounded-[3rem] p-5 sm:p-10 border border-[#cfaf72]/20 shadow-2xl relative overflow-hidden">
         <div className="absolute top-0 right-0 w-32 h-32 bg-accent/5 rounded-full blur-2xl pointer-events-none" />
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-8">
           <div>
@@ -2148,6 +2162,7 @@ function Home({
           )}
         </div>
       </section>
+      )}
 
       {/* SEÇÃO EDITAR REDES SOCIAIS E WHATSAPP (Apenas Admin) */}
       {isAdmin && (
@@ -2156,6 +2171,90 @@ function Home({
             <span className="text-[10px] bg-indigo-500/10 text-indigo-500 font-black tracking-widest uppercase px-4 py-2 rounded-full border border-indigo-500/15">Painel Admin</span>
             <h3 className="text-3xl font-black text-heading tracking-tight mt-3">Configurações Gerais do Aplicativo</h3>
             <p className="text-muted text-sm mt-1">Gerencie canais sociais e os textos legais exibidos para os usuários finais nesta plataforma.</p>
+          </div>
+
+          {/* TAB VISIBILITY CONFIGURATION SLIDERS */}
+          <div className="space-y-4 border-b border-indigo-500/10 dark:border-white/5 pb-8">
+            <h4 className="text-xs font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">0. Controlo de Exibição de Abas para Alunos (Mural, Livraria e Suporte)</h4>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              
+              {/* Mural Tab Toggle */}
+              <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-[#cfaf72]/10 dark:border-white/5 shadow-sm flex flex-col justify-between gap-4">
+                <div className="flex items-start gap-3">
+                  <div className="p-3 bg-amber-500/10 text-amber-500 rounded-2xl shrink-0">
+                    <MessageCircle size={22} />
+                  </div>
+                  <div>
+                    <h5 className="text-sm font-black text-heading">Aba Mural / Comunidade</h5>
+                    <p className="text-[11px] text-slate-400 dark:text-slate-400 mt-1 font-semibold leading-relaxed">Habilita ou oculta o feed da comunidade e o mural geral de novidades.</p>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between border-t border-slate-100/15 pt-4">
+                  <span className={`text-[11px] font-black ${enabledTabs?.comunidade ? 'text-emerald-400' : 'text-slate-400'}`}>
+                    {enabledTabs?.comunidade ? '● ATIVADO (Visível)' : '○ DESATIVADO (Oculto)'}
+                  </span>
+                  <label className="relative inline-flex items-center cursor-pointer select-none">
+                    <input 
+                      type="checkbox" 
+                      className="sr-only peer" 
+                      checked={!!enabledTabs?.comunidade} 
+                      onChange={(e) => {
+                        const val = e.target.checked;
+                        setEnabledTabs((prev: any) => {
+                          const next = { ...prev, comunidade: val };
+                          fetch("/api/db/configuracoes/add", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ chave: "tab_comunidade", valor: val ? "true" : "false" })
+                          }).catch(err => console.warn(err));
+                          return next;
+                        });
+                      }}
+                    />
+                    <div className="w-11 h-6 bg-slate-200 dark:bg-slate-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#cfaf72]"></div>
+                  </label>
+                </div>
+              </div>
+
+              {/* Suporte Tab Toggle */}
+              <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-[#cfaf72]/10 dark:border-white/5 shadow-sm flex flex-col justify-between gap-4">
+                <div className="flex items-start gap-3">
+                  <div className="p-3 bg-cyan-500/10 text-cyan-400 rounded-2xl shrink-0">
+                    <LifeBuoy size={22} />
+                  </div>
+                  <div>
+                    <h5 className="text-sm font-black text-heading">Aba Suporte Geral</h5>
+                    <p className="text-[11px] text-slate-400 dark:text-slate-400 mt-1 font-semibold leading-relaxed">Permite aos utilizadores enviar mensagens, comprovativos eletrónicos, e emojis.</p>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between border-t border-slate-100/15 pt-4">
+                  <span className={`text-[11px] font-black ${enabledTabs?.suporte ? 'text-emerald-400' : 'text-slate-400'}`}>
+                    {enabledTabs?.suporte ? '● ATIVADO (Visível)' : '○ DESATIVADO (Oculto)'}
+                  </span>
+                  <label className="relative inline-flex items-center cursor-pointer select-none">
+                    <input 
+                      type="checkbox" 
+                      className="sr-only peer" 
+                      checked={!!enabledTabs?.suporte} 
+                      onChange={(e) => {
+                        const val = e.target.checked;
+                        setEnabledTabs((prev: any) => {
+                          const next = { ...prev, suporte: val };
+                          fetch("/api/db/configuracoes/add", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ chave: "tab_suporte", valor: val ? "true" : "false" })
+                          }).catch(err => console.warn(err));
+                          return next;
+                        });
+                      }}
+                    />
+                    <div className="w-11 h-6 bg-slate-200 dark:bg-slate-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#cfaf72]"></div>
+                  </label>
+                </div>
+              </div>
+
+            </div>
           </div>
 
           <div className="space-y-4">
@@ -4871,11 +4970,40 @@ function AppContent({ isDark, theme, setTheme }: { isDark: boolean, theme: "ligh
 
   // Administrative control state
   const [isAdmin, setIsAdmin] = useState(() => {
-    return localStorage.getItem("admin_logged") === "true";
+    try {
+      return localStorage.getItem("admin_logged") === "true";
+    } catch {
+      return false;
+    }
+  });
+
+  // Global tab visibility configs
+  const [enabledTabs, setEnabledTabs] = useState(() => {
+    try {
+      const saved = localStorage.getItem("escola_da_fe_tabs_config");
+      if (saved) {
+        return JSON.parse(saved);
+      }
+    } catch (e) {
+      console.warn("Could not read tabs config:", e);
+    }
+    return { comunidade: true, livros: true, suporte: true };
   });
 
   useEffect(() => {
-    localStorage.setItem("admin_logged", isAdmin ? "true" : "false");
+    try {
+      localStorage.setItem("escola_da_fe_tabs_config", JSON.stringify(enabledTabs));
+    } catch (e) {
+      console.warn("Could not write tabs config:", e);
+    }
+  }, [enabledTabs]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("admin_logged", isAdmin ? "true" : "false");
+    } catch (e) {
+      console.warn("Could not write to localStorage:", e);
+    }
     window.dispatchEvent(new CustomEvent("admin-state-changed", { detail: isAdmin }));
   }, [isAdmin]);
 
@@ -4885,13 +5013,27 @@ function AppContent({ isDark, theme, setTheme }: { isDark: boolean, theme: "ligh
       if (customEvent.detail !== undefined) {
         setIsAdmin(customEvent.detail);
       } else {
-        const logged = localStorage.getItem("admin_logged") === "true";
+        let logged = false;
+        try {
+          logged = localStorage.getItem("admin_logged") === "true";
+        } catch {}
         setIsAdmin(logged);
       }
     };
     window.addEventListener("sync-admin-status", handleLoginUpdate);
     return () => window.removeEventListener("sync-admin-status", handleLoginUpdate);
   }, []);
+
+  const getSafeDeletedIds = (): any[] => {
+    try {
+      const saved = localStorage.getItem("escola_da_fe_deleted_ids");
+      if (!saved) return [];
+      const parsed = JSON.parse(saved);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  };
 
   // Persistent user content lists
   const [themes, setThemes] = useState<any[]>(() => {
@@ -4900,7 +5042,7 @@ function AppContent({ isDark, theme, setTheme }: { isDark: boolean, theme: "ligh
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed)) {
-          const deletedIds = JSON.parse(localStorage.getItem("escola_da_fe_deleted_ids") || "[]");
+          const deletedIds = getSafeDeletedIds();
           const merged = [...parsed];
           BIBLICAL_THEMES.forEach(def => {
             if (!merged.some(m => m.id === def.id) && !deletedIds.includes(def.id)) {
@@ -4922,7 +5064,7 @@ function AppContent({ isDark, theme, setTheme }: { isDark: boolean, theme: "ligh
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed)) {
-          const deletedIds = JSON.parse(localStorage.getItem("escola_da_fe_deleted_ids") || "[]");
+          const deletedIds = getSafeDeletedIds();
           const merged = [...parsed];
           BIBLICAL_NAMES.forEach(def => {
             if (!merged.some(m => m.name === def.name) && !deletedIds.includes(def.name)) {
@@ -4944,7 +5086,7 @@ function AppContent({ isDark, theme, setTheme }: { isDark: boolean, theme: "ligh
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed)) {
-          const deletedIds = JSON.parse(localStorage.getItem("escola_da_fe_deleted_ids") || "[]");
+          const deletedIds = getSafeDeletedIds();
           const merged = [...parsed];
           BIBLICAL_STORIES.forEach(def => {
             if (!merged.some(m => m.id === def.id) && !deletedIds.includes(def.id)) {
@@ -4966,7 +5108,7 @@ function AppContent({ isDark, theme, setTheme }: { isDark: boolean, theme: "ligh
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed)) {
-          const deletedIds = JSON.parse(localStorage.getItem("escola_da_fe_deleted_ids") || "[]");
+          const deletedIds = getSafeDeletedIds();
           
           const updatedParsed = parsed.map((item: any) => {
             const matchingDefault = THEOLOGY_TOPICS.find(def => def.id === item.id);
@@ -5012,7 +5154,7 @@ function AppContent({ isDark, theme, setTheme }: { isDark: boolean, theme: "ligh
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed)) {
-          const deletedIds = JSON.parse(localStorage.getItem("escola_da_fe_deleted_ids") || "[]");
+          const deletedIds = getSafeDeletedIds();
           const merged = [...parsed];
           BASIC_COURSE.forEach(def => {
             if (!merged.some(m => m.lesson === def.lesson) && !deletedIds.includes(`course_${def.lesson}`)) {
@@ -5050,7 +5192,7 @@ function AppContent({ isDark, theme, setTheme }: { isDark: boolean, theme: "ligh
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed)) {
-          const deletedIds = JSON.parse(localStorage.getItem("escola_da_fe_deleted_ids") || "[]");
+          const deletedIds = getSafeDeletedIds();
           const merged = [...parsed];
           DEFAULT_LIVROS.forEach(def => {
             if (!merged.some(m => m.id === def.id) && !deletedIds.includes(def.id)) {
@@ -5200,17 +5342,6 @@ function AppContent({ isDark, theme, setTheme }: { isDark: boolean, theme: "ligh
     try {
       setDbStatus("connecting");
 
-      // Validar presença das variáveis de ambiente antes de qualquer requisição
-      const configExists = await checkSupabaseConfigExists();
-      if (!configExists) {
-        console.error("[Supabase Sync] Erro: Configuração do Supabase ausente! Nenhuma URL ou Chave foi encontrada.");
-        setSupabaseConfigMissing(true);
-        setDbStatus("offline");
-        return;
-      } else {
-        setSupabaseConfigMissing(false);
-      }
-
       let resultData: any = null;
       let syncMethod = "";
 
@@ -5227,6 +5358,7 @@ function AppContent({ isDark, theme, setTheme }: { isDark: boolean, theme: "ligh
           if (result && result.success && result.data) {
             resultData = result.data;
             syncMethod = "EXPRESS_PROXY";
+            setSupabaseConfigMissing(false);
             console.log("[Supabase Sync] Conectado com sucesso via backend Express.");
           }
         } else {
@@ -5238,64 +5370,71 @@ function AppContent({ isDark, theme, setTheme }: { isDark: boolean, theme: "ligh
 
       // 2. TENTATIVA DIRETA CLIENT-SIDE (Necessário para Netlify - Conecta direto do navegador)
       if (!resultData) {
-        try {
-          console.log("[Supabase Sync] Fazendo fallback: tentando conexão direta do navegador com o Supabase...");
-          const supabase = await getSupabaseClient();
-          if (supabase) {
-            const safeDirectQuery = async (tableName: string) => {
-              try {
-                const { data, error } = await supabase.from(tableName).select("*");
-                if (error) {
-                  console.warn(`[Supabase Sync] Erro em consulta direta da tabela "${tableName}":`, error.message);
+        const configExists = await checkSupabaseConfigExists();
+        if (!configExists) {
+          console.warn("[Supabase Sync] Não foi possível fazer fallback direto: Configuração do Supabase ausente no cliente.");
+          setSupabaseConfigMissing(true);
+        } else {
+          setSupabaseConfigMissing(false);
+          try {
+            console.log("[Supabase Sync] Fazendo fallback: tentando conexão direta do navegador com o Supabase...");
+            const supabase = await getSupabaseClient();
+            if (supabase) {
+              const safeDirectQuery = async (tableName: string) => {
+                try {
+                  const { data, error } = await supabase.from(tableName).select("*");
+                  if (error) {
+                    console.warn(`[Supabase Sync] Erro em consulta direta da tabela "${tableName}":`, error.message);
+                    return [];
+                  }
+                  return data || [];
+                } catch (e: any) {
+                  console.warn(`[Supabase Sync] Exceção em consulta direta da tabela "${tableName}":`, e.message || e);
                   return [];
                 }
-                return data || [];
-              } catch (e: any) {
-                console.warn(`[Supabase Sync] Exceção em consulta direta da tabela "${tableName}":`, e.message || e);
-                return [];
-              }
-            };
+              };
 
-            const [
-              estudos,
-              dicionario,
-              historias,
-              teologia,
-              curso,
-              postagens,
-              configuracoes,
-              dispositivosData,
-              livrosData
-            ] = await Promise.all([
-              safeDirectQuery("estudos_basicos"),
-              safeDirectQuery("dicionario_biblico"),
-              safeDirectQuery("historias_biografias"),
-              safeDirectQuery("teologia_doutrinas"),
-              safeDirectQuery("licoes_curso"),
-              safeDirectQuery("postagens"),
-              safeDirectQuery("configuracoes_sociais"),
-              safeDirectQuery("dispositivos"),
-              safeDirectQuery("livros")
-            ]);
+              const [
+                estudos,
+                dicionario,
+                historias,
+                teologia,
+                curso,
+                postagens,
+                configuracoes,
+                dispositivosData,
+                livrosData
+              ] = await Promise.all([
+                safeDirectQuery("estudos_basicos"),
+                safeDirectQuery("dicionario_biblico"),
+                safeDirectQuery("historias_biografias"),
+                safeDirectQuery("teologia_doutrinas"),
+                safeDirectQuery("licoes_curso"),
+                safeDirectQuery("postagens"),
+                safeDirectQuery("configuracoes_sociais"),
+                safeDirectQuery("dispositivos"),
+                safeDirectQuery("livros")
+              ]);
 
-            resultData = {
-              estudos,
-              dicionario,
-              historias,
-              teologia,
-              curso,
-              postagens,
-              configuracoes,
-              dispositivos: dispositivosData,
-              livros: livrosData
-            };
-            syncMethod = "DIRECT_CLIENT";
-            console.log("[Supabase Sync] Sincronização direta com Supabase bem-sucedida (Modo Client-Only ativo)!");
-          } else {
-            console.error("[Supabase Sync] Erro: Não foi possível obter instância do cliente Supabase para conexão direta.");
+              resultData = {
+                estudos,
+                dicionario,
+                historias,
+                teologia,
+                curso,
+                postagens,
+                configuracoes,
+                dispositivos: dispositivosData,
+                livros: livrosData
+              };
+              syncMethod = "DIRECT_CLIENT";
+              console.log("[Supabase Sync] Sincronização direta com Supabase bem-sucedida (Modo Client-Only ativo)!");
+            } else {
+              console.error("[Supabase Sync] Erro: Não foi possível obter instância do cliente Supabase para conexão direta.");
+            }
+          } catch (directErr: any) {
+            console.error("[Supabase Sync] Falha geral ao carregar dados diretamente do Supabase Client:", directErr.message || directErr);
           }
-        } catch (directErr: any) {
-          console.error("[Supabase Sync] Falha geral ao carregar dados diretamente do Supabase Client:", directErr.message || directErr);
         }
       }
 
@@ -5319,7 +5458,7 @@ function AppContent({ isDark, theme, setTheme }: { isDark: boolean, theme: "ligh
         const actualDispositivos = Array.isArray(dispositivosData) ? dispositivosData : [];
         setDispositivos(actualDispositivos);
 
-        const deletedIds = JSON.parse(localStorage.getItem("escola_da_fe_deleted_ids") || "[]");
+        const deletedIds = getSafeDeletedIds();
 
         console.log(`[Supabase Sync] Mapeando dados obtidos via ${syncMethod}. Estudos: ${estudos.length}, Dicionário: ${dicionario.length}`);
 
@@ -5353,13 +5492,8 @@ function AppContent({ isDark, theme, setTheme }: { isDark: boolean, theme: "ligh
               bibleVerse: row.referencia_biblica || ""
             };
           });
-        setThemes((prev: any[]) => {
+        setThemes(() => {
           const merged = [...mappedEstudos];
-          (prev || []).forEach(localItem => {
-            if (!merged.some(m => m.id === localItem.id) && !deletedIds.includes(localItem.id)) {
-              merged.push(localItem);
-            }
-          });
           BIBLICAL_THEMES.forEach(def => {
             if (!merged.some(m => m.id === def.id) && !deletedIds.includes(def.id)) {
               merged.push(def);
@@ -5397,13 +5531,8 @@ function AppContent({ isDark, theme, setTheme }: { isDark: boolean, theme: "ligh
               bibleVerse: row.referencia_biblica || ""
             };
           });
-        setNames((prev: any[]) => {
+        setNames(() => {
           const merged = [...mappedDicionario];
-          (prev || []).forEach(localItem => {
-            if (!merged.some(m => m.name === localItem.name) && !deletedIds.includes(localItem.name)) {
-              merged.push(localItem);
-            }
-          });
           BIBLICAL_NAMES.forEach(def => {
             if (!merged.some(m => m.name === def.name) && !deletedIds.includes(def.name)) {
               merged.push(def);
@@ -5442,13 +5571,8 @@ function AppContent({ isDark, theme, setTheme }: { isDark: boolean, theme: "ligh
               bibleVerse: row.referencia_biblica || ""
             };
           });
-        setStories((prev: any[]) => {
+        setStories(() => {
           const merged = [...mappedHistorias];
-          (prev || []).forEach(localItem => {
-            if (!merged.some(m => m.id === localItem.id) && !deletedIds.includes(localItem.id)) {
-              merged.push(localItem);
-            }
-          });
           BIBLICAL_STORIES.forEach(def => {
             if (!merged.some(m => m.id === def.id) && !deletedIds.includes(def.id)) {
               merged.push(def);
@@ -5486,33 +5610,8 @@ function AppContent({ isDark, theme, setTheme }: { isDark: boolean, theme: "ligh
               bibleVerse: row.referencias_biblicas || ""
             };
           });
-        setTheologyTopics((prev: any[]) => {
+        setTheologyTopics(() => {
           const merged = [...mappedTeologia];
-          (prev || []).forEach(localItem => {
-            if (!merged.some(m => m.id === localItem.id) && !deletedIds.includes(localItem.id)) {
-              const matchingDefault = THEOLOGY_TOPICS.find(def => def.id === localItem.id);
-              if (matchingDefault) {
-                const isInvalid = !localItem.content || localItem.content.length < 100 || (
-                  localItem.content.toLowerCase().includes("cenário laboral") ||
-                  localItem.content.toLowerCase().includes("garantir exemplar") ||
-                  localItem.content.toLowerCase().includes("bíblia histórica") ||
-                  localItem.content.toLowerCase().includes("ambiente doméstico") ||
-                  localItem.content.toLowerCase().includes("jovem chamado lucas") ||
-                  localItem.content.toLowerCase().includes("água potável") ||
-                  localItem.content.toLowerCase().includes("notícias difíceis") ||
-                  localItem.content.toLowerCase().includes("obstáculo na atualidade")
-                );
-                merged.push({
-                  ...localItem,
-                  title: matchingDefault.title,
-                  description: matchingDefault.description,
-                  content: isInvalid ? matchingDefault.content : localItem.content
-                });
-              } else {
-                merged.push(localItem);
-              }
-            }
-          });
           THEOLOGY_TOPICS.forEach(def => {
             if (!merged.some(m => m.id === def.id) && !deletedIds.includes(def.id)) {
               merged.push(def);
@@ -5552,14 +5651,8 @@ function AppContent({ isDark, theme, setTheme }: { isDark: boolean, theme: "ligh
               content: (localDefault && (!row.conteudo || isBoilerplate)) ? localDefault.content : row.conteudo
             };
           });
-        setCourseLessons((prev: any[]) => {
+        setCourseLessons(() => {
           const merged = [...mappedCurso];
-          (prev || []).forEach(localItem => {
-            const tempLesson = Number(localItem.lesson) || 0;
-            if (!merged.some(m => Number(m.lesson) === tempLesson) && !deletedIds.includes(tempLesson) && !deletedIds.includes(`course_${tempLesson}`)) {
-              merged.push(localItem);
-            }
-          });
           BASIC_COURSE.forEach(def => {
             if (!merged.some(m => Number(m.lesson) === def.lesson) && !deletedIds.includes(def.lesson) && !deletedIds.includes(`course_${def.lesson}`)) {
               merged.push(def);
@@ -5579,7 +5672,7 @@ function AppContent({ isDark, theme, setTheme }: { isDark: boolean, theme: "ligh
             author: row.autor || "Lemos Faya de Arcanjo",
             imageUrl: row.imagem_url || row.image || ""
           }));
-        setAnnouncements((prev: any[]) => {
+        setAnnouncements(() => {
           const merged = [...mappedComunicados];
           const defaults = [
             {
@@ -5618,13 +5711,8 @@ function AppContent({ isDark, theme, setTheme }: { isDark: boolean, theme: "ligh
             foto_capa: row.foto_capa || "",
             download_url: row.download_url || ""
           }));
-        setLivros((prev: any[]) => {
+        setLivros(() => {
           const merged = [...mappedLivros];
-          (prev || []).forEach(localItem => {
-            if (!merged.some(m => m.id === localItem.id) && !deletedIds.includes(localItem.id)) {
-              merged.push(localItem);
-            }
-          });
           DEFAULT_LIVROS.forEach(def => {
             if (!merged.some(m => m.id === def.id) && !deletedIds.includes(def.id)) {
               merged.push(def);
@@ -5664,76 +5752,92 @@ function AppContent({ isDark, theme, setTheme }: { isDark: boolean, theme: "ligh
             if (row.chave === "privacy_text") setPrivacyText(row.valor);
             else if (row.chave === "terms_text") setTermsText(row.valor);
           });
+
+          // Custom tab state sync
+          setEnabledTabs((prev: any) => {
+            const updated = { ...prev };
+            configuracoes.forEach((row: any) => {
+              if (row.chave === "tab_comunidade") updated.comunidade = row.valor === "true";
+              else if (row.chave === "tab_livros") updated.livros = row.valor === "true";
+              else if (row.chave === "tab_suporte") updated.suporte = row.valor === "true";
+            });
+            return updated;
+          });
         }
 
         // === UPWARD OFFLINE SYNC ===
         // Push newly created local data items which are not in DB, back to Supabase
-        
-        // Estudos fallback push
-        themes.forEach((localItem: any) => {
-          if (localItem.id && localItem.id.startsWith("estudo_") && !deletedIds.includes(localItem.id)) {
-            if (!estudos.some((r: any) => r.id === localItem.id)) {
-              pushItemToDb("estudos", localItem);
+        if (isAdmin) {
+          // Estudos fallback push
+          themes.forEach((localItem: any) => {
+            if (localItem.id && localItem.id.startsWith("estudo_") && !deletedIds.includes(localItem.id)) {
+              if (!estudos.some((r: any) => r.id === localItem.id)) {
+                pushItemToDb("estudos", localItem);
+              }
             }
-          }
-        });
+          });
 
-        // Dicionario fallback push
-        names.forEach((localItem: any) => {
-          const isDefault = BIBLICAL_NAMES.some(def => def.name === localItem.name);
-          if (!isDefault && !deletedIds.includes(localItem.name)) {
-            if (!dicionario.some((r: any) => r.termo === localItem.name)) {
-              pushItemToDb("dicionario", localItem);
+          // Dicionario fallback push
+          names.forEach((localItem: any) => {
+            const isDefault = BIBLICAL_NAMES.some(def => def.name === localItem.name);
+            if (!isDefault && !deletedIds.includes(localItem.name)) {
+              if (!dicionario.some((r: any) => r.termo === localItem.name)) {
+                pushItemToDb("dicionario", localItem);
+              }
             }
-          }
-        });
+          });
 
-        // Historias fallback push
-        stories.forEach((localItem: any) => {
-          const isDefault = BIBLICAL_STORIES.some(def => def.id === localItem.id);
-          if (!isDefault && !deletedIds.includes(localItem.id)) {
-            if (!historias.some((r: any) => r.id === localItem.id)) {
-              pushItemToDb("historias", localItem);
+          // Historias fallback push
+          stories.forEach((localItem: any) => {
+            const isDefault = BIBLICAL_STORIES.some(def => def.id === localItem.id);
+            if (!isDefault && !deletedIds.includes(localItem.id)) {
+              if (!historias.some((r: any) => r.id === localItem.id)) {
+                pushItemToDb("historias", localItem);
+              }
             }
-          }
-        });
+          });
 
-        // Teologia fallback push
-        theologyTopics.forEach((localItem: any) => {
-          const isDefault = THEOLOGY_TOPICS.some(def => def.id === localItem.id);
-          if (!isDefault && !deletedIds.includes(localItem.id)) {
-            if (!teologia.some((r: any) => r.id === localItem.id)) {
-              pushItemToDb("teologia", localItem);
+          // Teologia fallback push
+          theologyTopics.forEach((localItem: any) => {
+            const isDefault = THEOLOGY_TOPICS.some(def => def.id === localItem.id);
+            if (!isDefault && !deletedIds.includes(localItem.id)) {
+              if (!teologia.some((r: any) => r.id === localItem.id)) {
+                pushItemToDb("teologia", localItem);
+              }
             }
-          }
-        });
+          });
 
-        // Curso fallback push
-        courseLessons.forEach((localItem: any) => {
-          const isDefault = BASIC_COURSE.some(def => def.lesson === localItem.lesson);
-          if (!isDefault && !deletedIds.includes(localItem.lesson)) {
-            if (!curso.some((r: any) => r.lesson === localItem.lesson)) {
-              pushItemToDb("curso", localItem);
+          // Curso fallback push
+          courseLessons.forEach((localItem: any) => {
+            const isDefault = BASIC_COURSE.some(def => def.lesson === localItem.lesson);
+            if (!isDefault && !deletedIds.includes(localItem.lesson)) {
+              if (!curso.some((r: any) => r.lesson === localItem.lesson)) {
+                pushItemToDb("curso", localItem);
+              }
             }
-          }
-        });
+          });
 
-        // Postagens fallback push
-        announcements.forEach((localItem: any) => {
-          const isDefault = localItem.id === "anuncio_initial_1";
-          if (!isDefault && !deletedIds.includes(localItem.id)) {
-            if (!actualPostagens.some((r: any) => r.id === localItem.id)) {
-              pushItemToDb("postagens", localItem);
+          // Postagens fallback push
+          announcements.forEach((localItem: any) => {
+            const isDefault = localItem.id === "anuncio_initial_1";
+            if (!isDefault && !deletedIds.includes(localItem.id)) {
+              if (!actualPostagens.some((r: any) => r.id === localItem.id)) {
+                pushItemToDb("postagens", localItem);
+              }
             }
-          }
-        });
+          });
 
-        // Livros fallback push
+          // Livros fallback push (Legacy admin inner block removed to unify below)
+        }
+
+        // Unificado: Sempre garante que os livros locais (padrão ou customizados) que não estão no banco sejam enviados.
+        // Isso garante a sincronização bidirecional bidirecional ("vice-versa" completo) para todos os usuários.
         livros.forEach((localItem: any) => {
-          const isDefault = DEFAULT_LIVROS.some(def => def.id === localItem.id);
-          if (!isDefault && !deletedIds.includes(localItem.id)) {
+          if (!deletedIds.includes(localItem.id)) {
             if (!actualLivros.some((r: any) => r.id === localItem.id)) {
-              pushItemToDb("livros", localItem);
+              pushItemToDb("livros", localItem).catch(e => {
+                console.warn("[Supabase Sync] Falha ao enviar livro para o banco:", e);
+              });
             }
           }
         });
@@ -5748,7 +5852,7 @@ function AppContent({ isDark, theme, setTheme }: { isDark: boolean, theme: "ligh
     }
   };
 
-  // 1. Initial sync & periodic syncing loop (runs every 60s)
+  // 1. Initial sync & periodic syncing loop (runs every 15s)
   useEffect(() => {
     syncWithDatabase();
 
@@ -5758,12 +5862,22 @@ function AppContent({ isDark, theme, setTheme }: { isDark: boolean, theme: "ligh
       syncWithDatabase();
     };
 
+    const handleFocusOrVisible = () => {
+      if (document.visibilityState === "visible") {
+        console.log("[Supabase Sync] App focado/visível. Forçando atualização rápida com o banco...");
+        syncWithDatabase();
+      }
+    };
+
     const intervalId = setInterval(() => {
       console.log("[Supabase Sync] Sincronização periódica iniciada...");
       syncWithDatabase();
-    }, 60000);
+    }, 15000);
 
     window.addEventListener("online", handleOnline);
+    window.addEventListener("focus", handleFocusOrVisible);
+    document.addEventListener("visibilitychange", handleFocusOrVisible);
+
     const handleRefreshPostagens = () => {
       console.log("[Supabase Sync] Recebido evento refresh-announcements. Atualizando banco...");
       syncWithDatabase();
@@ -5771,6 +5885,8 @@ function AppContent({ isDark, theme, setTheme }: { isDark: boolean, theme: "ligh
     window.addEventListener("refresh-announcements", handleRefreshPostagens);
     return () => {
       window.removeEventListener("online", handleOnline);
+      window.removeEventListener("focus", handleFocusOrVisible);
+      document.removeEventListener("visibilitychange", handleFocusOrVisible);
       window.removeEventListener("refresh-announcements", handleRefreshPostagens);
       clearInterval(intervalId);
     };
@@ -5956,11 +6072,11 @@ function AppContent({ isDark, theme, setTheme }: { isDark: boolean, theme: "ligh
   return (
     <div className="min-h-screen bg-bg-page dark:bg-bg-dark transition-colors duration-500 selection:bg-accent/30 flex flex-col justify-between">
       <div className="w-full flex-grow">
-        <Navbar isDark={isDark} theme={theme} setTheme={setTheme} toggleDark={() => setTheme(isDark ? "light" : "dark")} isAdmin={isAdmin} setIsAdmin={setIsAdmin} dbStatus={dbStatus} onSync={syncWithDatabase} supabaseConfigMissing={supabaseConfigMissing} onRestoreDefaults={resetAllToDefaults} />
+        <Navbar isDark={isDark} theme={theme} setTheme={setTheme} toggleDark={() => setTheme(isDark ? "light" : "dark")} isAdmin={isAdmin} setIsAdmin={setIsAdmin} dbStatus={dbStatus} onSync={syncWithDatabase} supabaseConfigMissing={supabaseConfigMissing} onRestoreDefaults={resetAllToDefaults} enabledTabs={enabledTabs} />
         <main className="pt-24 lg:pt-[156px] p-4 sm:p-8 lg:p-12 pb-32 lg:pb-28 max-w-[1920px] mx-auto">
           <AnimatePresence mode="wait">
             <Routes>
-              <Route path="/" element={<Home onSelectItem={handleSelectItem} announcements={announcements} setAnnouncements={setAnnouncements} isAdmin={isAdmin} triggerConfirm={triggerConfirm} socialLinks={socialLinks} setSocialLinks={setSocialLinks} privacyText={privacyText} setPrivacyText={setPrivacyText} termsText={termsText} setTermsText={setTermsText} supportDetails={supportDetails} setSupportDetails={setSupportDetails} />} />
+              <Route path="/" element={<Home onSelectItem={handleSelectItem} announcements={announcements} setAnnouncements={setAnnouncements} isAdmin={isAdmin} triggerConfirm={triggerConfirm} socialLinks={socialLinks} setSocialLinks={setSocialLinks} privacyText={privacyText} setPrivacyText={setPrivacyText} termsText={termsText} setTermsText={setTermsText} supportDetails={supportDetails} setSupportDetails={setSupportDetails} enabledTabs={enabledTabs} setEnabledTabs={setEnabledTabs} />} />
               <Route path="/estudos" element={<Studies onSelectItem={handleSelectItem} themes={themes} setThemes={setThemes} isAdmin={isAdmin} triggerConfirm={triggerConfirm} />} />
               <Route path="/dicionario" element={<Dictionary onSelectItem={handleSelectItem} names={names} setNames={setNames} isAdmin={isAdmin} triggerConfirm={triggerConfirm} />} />
               <Route path="/historias" element={<Stories onSelectItem={handleSelectItem} stories={stories} setStories={setStories} isAdmin={isAdmin} triggerConfirm={triggerConfirm} />} />
@@ -5970,6 +6086,7 @@ function AppContent({ isDark, theme, setTheme }: { isDark: boolean, theme: "ligh
               <Route path="/curso" element={<Course onSelectItem={handleSelectItem} courseLessons={courseLessons} setCourseLessons={setCourseLessons} isAdmin={isAdmin} triggerConfirm={triggerConfirm} />} />
               <Route path="/livros" element={<LivrosView isAdmin={isAdmin} livros={livros} setLivros={setLivros} triggerConfirm={triggerConfirm} />} />
               <Route path="/comunidade" element={<Community isAdmin={isAdmin} triggerConfirm={triggerConfirm} />} />
+              <Route path="/suporte" element={<SupportView isAdmin={isAdmin} triggerConfirm={triggerConfirm} />} />
               <Route path="/apoio" element={<ApoiaMissao supportDetails={supportDetails} setSupportDetails={setSupportDetails} isAdmin={isAdmin} />} />
               <Route path="/favoritos" element={<FavoritesView onSelectItem={handleSelectItem} />} />
               <Route path="/usuarios" element={<UsersView isAdmin={isAdmin} dispositivos={dispositivos} onRefresh={syncWithDatabase} triggerConfirm={triggerConfirm} />} />
@@ -6107,7 +6224,6 @@ function AppContent({ isDark, theme, setTheme }: { isDark: boolean, theme: "ligh
         termsText={termsText}
       />
 
-      <AITeacher />
       <PWAController />
       <LivretoManager />
     </div>

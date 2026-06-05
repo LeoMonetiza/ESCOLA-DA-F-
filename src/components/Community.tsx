@@ -26,6 +26,41 @@ import {
 import { cn } from "@/src/lib/utils";
 import { getSupabaseClient as getClientClient } from "../lib/supabaseClient";
 
+function tryFormatDateTimeLocal(dateStr: string | undefined | null): string {
+  try {
+    if (!dateStr) return "--/--/---- --:--";
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return "--/--/---- --:--";
+    return d.toLocaleDateString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+  } catch {
+    return "--/--/---- --:--";
+  }
+}
+
+function tryFormatDateShort(dateStr: string | undefined | null): string {
+  try {
+    if (!dateStr) return "---";
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return "---";
+    return d.toLocaleDateString("pt-BR", {
+      day: "numeric",
+      month: "short"
+    });
+  } catch {
+    return "---";
+  }
+}
+
+function safeGetTime(dateStr: string | undefined | null): number {
+  try {
+    if (!dateStr) return 0;
+    const t = new Date(dateStr).getTime();
+    return isNaN(t) ? 0 : t;
+  } catch {
+    return 0;
+  }
+}
+
 interface Post {
   id: string;
   title: string;
@@ -670,13 +705,13 @@ export default function Community({
   const getPostComments = (postId: string) => {
     return comments
       .filter((c) => c.post_id === postId)
-      .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+      .sort((a, b) => safeGetTime(a.created_at) - safeGetTime(b.created_at));
   };
 
   // Filter posts
   const filteredPosts = posts
     .filter((p) => activeTab === "todas" || p.category === activeTab)
-    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    .sort((a, b) => safeGetTime(b.created_at) - safeGetTime(a.created_at));
 
   // Ads currently active
   const activeAds = ads.filter((a) => a.active);
@@ -1293,7 +1328,7 @@ export default function Community({
                                     <span className="text-[9px] bg-slate-100 dark:bg-white/5 text-slate-400 dark:text-slate-300 rounded-lg px-2 py-0.5 uppercase tracking-wide font-black">Você</span>
                                   )}
                                   <span className="text-[10px] text-muted font-mono ml-auto">
-                                    {new Date(com.created_at).toLocaleDateString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                                    {tryFormatDateTimeLocal(com.created_at)}
                                   </span>
                                 </div>
                                 {editingCommentId === com.id ? (
@@ -1415,10 +1450,7 @@ export default function Community({
                     </span>
                     <div className="flex items-center gap-1.5 text-xs text-muted font-bold font-mono">
                       <Clock size={12} />
-                      {new Date(post.created_at).toLocaleDateString("pt-BR", {
-                        day: "numeric",
-                        month: "short"
-                      })}
+                      {tryFormatDateShort(post.created_at)}
                     </div>
                   </div>
 
@@ -1620,7 +1652,7 @@ export default function Community({
                                   <span className="text-[9px] bg-slate-100 dark:bg-white/5 text-slate-400 dark:text-slate-300 rounded-lg px-2 py-0.5 uppercase tracking-wide font-black">Você</span>
                                 )}
                                 <span className="text-[10px] text-muted font-mono ml-auto">
-                                  {new Date(com.created_at).toLocaleDateString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                                  {tryFormatDateTimeLocal(com.created_at)}
                                 </span>
                               </div>
                               {editingCommentId === com.id ? (

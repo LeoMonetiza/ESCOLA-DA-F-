@@ -24,9 +24,17 @@ interface FallbackData {
   homens: any[];
   dispositivos: any[];
   livros: any[];
+  suporte?: any[];
 }
 
 const FALLBACK_FILE = path.join(process.cwd(), "community_fallback.json");
+
+function promiseWithTimeout<T>(promise: Promise<T>, timeoutMs: number, timeoutValue: T): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((resolve) => setTimeout(() => resolve(timeoutValue), timeoutMs))
+  ]);
+}
 
 function getFallbackData(): FallbackData {
   const defaultData: FallbackData = {
@@ -62,7 +70,8 @@ function getFallbackData(): FallbackData {
     configuracoes: [],
     homens: [],
     dispositivos: [],
-    livros: []
+    livros: [],
+    suporte: []
   };
 
   try {
@@ -142,6 +151,43 @@ async function startServer() {
     }
   });
 
+  // Lightweight endpoint to load ONLY support messages (called frequently by polling)
+  app.get("/api/db/suporte/load", async (req, res) => {
+    const supabase = getSupabaseClient();
+    const fallback = getFallbackData();
+
+    try {
+      if (!supabase) {
+        return res.json({
+          success: true,
+          data: { suporte: fallback.suporte || [] }
+        });
+      }
+
+      // Query with a 1500ms timeout to avoid event loop blocking if Supabase is unresponsive
+      const queryPromise = supabase.from("suporte_mensagens").select("*");
+      const result = await promiseWithTimeout(queryPromise, 1500, { data: null, error: { message: "Query timeout (1500ms)" } });
+
+      if (result.error) {
+        console.warn("[Suporte] Retornando fallback local devido a erro ou timeout:", result.error.message);
+        return res.json({
+          success: true,
+          data: { suporte: fallback.suporte || [] }
+        });
+      }
+
+      res.json({
+        success: true,
+        data: { suporte: result.data || [] }
+      });
+    } catch (error: any) {
+      res.json({
+        success: true,
+        data: { suporte: fallback.suporte || [] }
+      });
+    }
+  });
+
   // Load all data from DB (attempts Supabase first, falls back to local JSON on missing tables or errors)
   app.get("/api/db/load", async (req, res) => {
     const supabase = getSupabaseClient();
@@ -154,7 +200,11 @@ async function startServer() {
           return fallback[fallbackKey] || defaultVal;
         }
         try {
-          const { data, error } = await supabase.from(tableName).select("*");
+          // Utiliza tempo limite para não travar o loop de eventos caso o Supabase esteja fora do ar (erro 522 / timeouts)
+          const queryPromise = supabase.from(tableName).select("*");
+          const result = await promiseWithTimeout(queryPromise, 1500, { data: null, error: { message: "Query timeout (1500ms)" } });
+          
+          const { data, error } = result;
           if (error) {
             console.warn(`Alerta de tabela (${tableName}):`, error.message);
             const localData = fallback[fallbackKey];
@@ -188,7 +238,8 @@ async function startServer() {
         ads,
         homens,
         dispositivos,
-        livros
+        livros,
+        suporte
       ] = await Promise.all([
         safeQuery("estudos_basicos", "estudos"),
         safeQuery("dicionario_biblico", "dicionario"),
@@ -203,7 +254,8 @@ async function startServer() {
         safeQuery("ads", "ads"),
         safeQuery("homens_de_deus", "homens"),
         safeQuery("dispositivos", "dispositivos"),
-        safeQuery("livros", "livros")
+        safeQuery("livros", "livros"),
+        safeQuery("suporte_mensagens", "suporte")
       ]);
 
       res.json({
@@ -222,7 +274,8 @@ async function startServer() {
           ads,
           homens,
           dispositivos,
-          livros
+          livros,
+          suporte
         }
       });
     } catch (error: any) {
@@ -257,6 +310,7 @@ async function startServer() {
     else if (table === "ads") { dbTable = "ads"; fallbackKey = "ads"; }
     else if (table === "dispositivos") { dbTable = "dispositivos"; fallbackKey = "dispositivos"; }
     else if (table === "livros") { dbTable = "livros"; fallbackKey = "livros"; }
+    else if (table === "suporte") { dbTable = "suporte_mensagens"; fallbackKey = "suporte" as any; }
 
     if (!dbTable) return res.status(400).json({ error: "Tabela especificada não reconhecida." });
 
@@ -330,6 +384,7 @@ async function startServer() {
     else if (table === "ads") { dbTable = "ads"; fallbackKey = "ads"; }
     else if (table === "dispositivos") { dbTable = "dispositivos"; fallbackKey = "dispositivos"; }
     else if (table === "livros") { dbTable = "livros"; fallbackKey = "livros"; }
+    else if (table === "suporte") { dbTable = "suporte_mensagens"; fallbackKey = "suporte" as any; }
 
     if (!dbTable) return res.status(400).json({ error: "Tabela especificada não reconhecida." });
 

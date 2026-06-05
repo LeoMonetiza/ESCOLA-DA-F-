@@ -367,3 +367,25 @@ INSERT INTO livros (id, titulo, autor, descricao, preco, paginas, editora, foto_
 ('livro_institutos', 'As Institutas da Religião Cristã', 'João Calvino', 'Uma das obras teológicas mais influentes da história do Cristianismo. Esta magnum opus de João Calvino aborda de forma profunda e exaustiva a teologia bíblica e reformada, detalhando a soberania de Deus, a redenção de Cristo e o papel da Igreja na Terra.', 'Grátis (Digital)', 650, 'Escola da Fé', 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&q=80&w=600', 'https://www.monergismo.com/textos/institutas/As-Institutas_Calvino_Volume-1.pdf'),
 ('livro_ortodoxia', 'Ortodoxia', 'G. K. Chesterton', 'O célebre ensaio de G. K. Chesterton onde compartilha sua jornada intelectual e espiritual até constatar que os enigmas formulados pelo pensamento secular encontram sua resposta definitiva e majestosa no enigma divino da transcendência de Cristo.', 'Grátis (Físico/Digital)', 190, 'Livros da Fé', 'https://images.unsplash.com/photo-1512820790803-83ca734da794?auto=format&fit=crop&q=80&w=600', 'http://www.gutenberg.org/files/130/130-h/130-h.htm')
 ON CONFLICT (id) DO NOTHING;
+
+-- 12. TABELA DE MENSAGENS COMPLETA DO SUPORTE DE USUÁRIOS
+CREATE TABLE IF NOT EXISTS suporte_mensagens (
+    id VARCHAR(100) PRIMARY KEY,
+    dispositivo_id VARCHAR(150) NOT NULL,
+    nome_usuario VARCHAR(255) NOT NULL,
+    mensagem TEXT NOT NULL,
+    midia_url TEXT,
+    midia_nome VARCHAR(255),
+    midia_tipo VARCHAR(100),
+    emoji VARCHAR(50),
+    enviado_por_admin BOOLEAN DEFAULT FALSE,
+    criado_em TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ATIVAR ROW LEVEL SECURITY (RLS) NO SUPABASE
+ALTER TABLE suporte_mensagens ENABLE ROW LEVEL SECURITY;
+
+-- PERMISSÃO DE ACESSO PÚBLICO INTEGRAL PARA ACESSO DIRETO CLIENT-SIDE
+DROP POLICY IF EXISTS "Acesso público irrestrito suporte" ON suporte_mensagens;
+CREATE POLICY "Acesso público irrestrito suporte" ON suporte_mensagens FOR ALL USING (true) WITH CHECK (true);
+

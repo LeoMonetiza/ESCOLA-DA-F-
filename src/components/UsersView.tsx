@@ -15,6 +15,28 @@ import {
 } from "lucide-react";
 import { cn } from "../lib/utils";
 
+function safeFormatDate(dateStr: string | undefined | null): string {
+  try {
+    if (!dateStr) return "---";
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return "---";
+    return d.toLocaleDateString("pt-BR");
+  } catch {
+    return "---";
+  }
+}
+
+function safeFormatTime(dateStr: string | undefined | null): string {
+  try {
+    if (!dateStr) return "---";
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return "---";
+    return d.toLocaleTimeString("pt-BR", { hour: '2-digit', minute: '2-digit' });
+  } catch {
+    return "---";
+  }
+}
+
 interface Dispositivo {
   id: string;
   device_id: string;
@@ -327,10 +349,10 @@ export default function UsersView({
                     <td className="py-5 px-6 text-muted font-mono">
                       <div className="space-y-0.5">
                         <span className="block font-bold">
-                          {dev.last_active_at ? new Date(dev.last_active_at).toLocaleDateString("pt-BR") : "---"}
+                          {safeFormatDate(dev.last_active_at)}
                         </span>
                         <span className="block text-[10px]">
-                          {dev.last_active_at ? new Date(dev.last_active_at).toLocaleTimeString("pt-BR", { hour: '2-digit', minute: '2-digit' }) : "---"}
+                          {safeFormatTime(dev.last_active_at)}
                         </span>
                       </div>
                     </td>
@@ -392,7 +414,7 @@ export default function UsersView({
                 <div className="flex items-center justify-between pt-2 border-t border-border-light/40 dark:border-border-dark/40">
                   <div className="flex items-center gap-1 text-muted font-mono text-[9px]">
                     <Calendar size={10} />
-                    <span>Alt: {dev.last_active_at ? new Date(dev.last_active_at).toLocaleDateString("pt-BR") : "---"}</span>
+                    <span>Alt: {safeFormatDate(dev.last_active_at)}</span>
                   </div>
 
                   <button

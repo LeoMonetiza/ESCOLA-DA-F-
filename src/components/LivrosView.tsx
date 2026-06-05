@@ -230,21 +230,22 @@ export default function LivrosView({
           const result = await performResilientDbWrite("livros", "DELETE", null, id);
           if (result && (result.success || result.localOnly)) {
             setLivros(prev => prev.filter(item => item.id !== id));
-            // Guardar no ID de deletados do localstorage caso queira propagar
-            const deletedIds = JSON.parse(localStorage.getItem("escola_da_fe_deleted_ids") || "[]");
-            if (!deletedIds.includes(id)) {
-              deletedIds.push(id);
-              localStorage.setItem("escola_da_fe_deleted_ids", JSON.stringify(deletedIds));
-            }
           }
         } catch (err) {
           console.error("Falha ao excluir livro remotamente:", err);
           // Fallback local
           setLivros(prev => prev.filter(item => item.id !== id));
-          const deletedIds = JSON.parse(localStorage.getItem("escola_da_fe_deleted_ids") || "[]");
-          if (!deletedIds.includes(id)) {
-            deletedIds.push(id);
-            localStorage.setItem("escola_da_fe_deleted_ids", JSON.stringify(deletedIds));
+        } finally {
+          try {
+            const saved = localStorage.getItem("escola_da_fe_deleted_ids") || "[]";
+            const deletedIds = JSON.parse(saved);
+            const list = Array.isArray(deletedIds) ? deletedIds : [];
+            if (!list.includes(id)) {
+              list.push(id);
+              localStorage.setItem("escola_da_fe_deleted_ids", JSON.stringify(list));
+            }
+          } catch (storageErr) {
+            console.warn("Falha ao salvar ID deletado localmente:", storageErr);
           }
         }
       }

@@ -33,6 +33,27 @@ import { cn } from "@/src/lib/utils";
 import { ThemeBanner } from "./SimulatedAds";
 import { getSupabaseClient, performResilientDbWrite } from "../lib/supabaseClient";
 
+function tryFormatDateTimeLocal(dateStr: string | undefined | null): string {
+  try {
+    if (!dateStr) return "--/--/---- --:--";
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return "--/--/---- --:--";
+    return d.toLocaleDateString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+  } catch {
+    return "--/--/---- --:--";
+  }
+}
+
+function safeGetTime(dateStr: string | undefined | null): number {
+  try {
+    if (!dateStr) return 0;
+    const t = new Date(dateStr).getTime();
+    return isNaN(t) ? 0 : t;
+  } catch {
+    return 0;
+  }
+}
+
 // --- Types ---
 export interface HomemDeDeus {
   id: string;
@@ -215,7 +236,7 @@ export default function HomensDeDeusView({
   const getBiographyComments = (manId: string) => {
     return comments
       .filter((c) => c.post_id === manId)
-      .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+      .sort((a, b) => safeGetTime(a.created_at) - safeGetTime(b.created_at));
   };
 
   const getReactionsCount = (manId: string, type: string) => {
@@ -1821,7 +1842,7 @@ export default function HomensDeDeusView({
                                 <span className="text-[9px] bg-amber-500/10 text-accent rounded-lg px-2 py-0.5 uppercase tracking-wide font-black">Você</span>
                               )}
                               <span className="text-[10px] text-muted font-mono ml-auto">
-                                {new Date(com.created_at).toLocaleDateString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                                {tryFormatDateTimeLocal(com.created_at)}
                               </span>
                             </div>
                             {editingCommentId === com.id ? (
