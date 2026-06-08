@@ -1021,6 +1021,18 @@ function Navbar({
   });
   const [isEditingName, setIsEditingName] = useState(false);
   const [tempName, setTempName] = useState("");
+
+  useEffect(() => {
+    const handleRegister = (e: any) => {
+      if (e.detail && e.detail.name) {
+        setUserName(e.detail.name);
+      }
+    };
+    window.addEventListener("register-user-device", handleRegister);
+    return () => {
+      window.removeEventListener("register-user-device", handleRegister);
+    };
+  }, []);
   
   const navItems = [
     { name: "Início", path: "/", icon: <HomeIcon size={20} /> },
@@ -4843,6 +4855,22 @@ function AppContent({ isDark, theme, setTheme }: { isDark: boolean, theme: "ligh
   // state to manage visitor devices logged inside the administrators dashboard
   const [dispositivos, setDispositivos] = useState<any[]>([]);
 
+  // Onboarding states for first-time installation / visitor registration
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [onboardingName, setOnboardingName] = useState("");
+  const [onboardingError, setOnboardingError] = useState("");
+
+  useEffect(() => {
+    try {
+      const hasName = localStorage.getItem("escola_da_fe_user_name");
+      if (!hasName || hasName.trim() === "") {
+        setShowOnboarding(true);
+      }
+    } catch (e) {
+      console.warn("Erro ao ler escola_da_fe_user_name do localStorage:", e);
+    }
+  }, []);
+
   // auto registers device logs inside the backend or local Fallback
   const registerDeviceActivity = async (customName?: string) => {
     try {
@@ -4912,8 +4940,17 @@ function AppContent({ isDark, theme, setTheme }: { isDark: boolean, theme: "ligh
       }
     };
     window.addEventListener("register-user-device", handleProfileRegister);
+
+    // Listen for PWA installation to update the installation status inside Supabase
+    const handleAppInstalled = () => {
+      console.log("[PWA] App instalado com sucesso! Atualizando registro no Supabase...");
+      registerDeviceActivity();
+    };
+    window.addEventListener("appinstalled", handleAppInstalled);
+
     return () => {
       window.removeEventListener("register-user-device", handleProfileRegister);
+      window.removeEventListener("appinstalled", handleAppInstalled);
     };
   }, []);
 
@@ -6164,7 +6201,7 @@ function AppContent({ isDark, theme, setTheme }: { isDark: boolean, theme: "ligh
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-3 mt-4 text-[10px] uppercase font-black tracking-wider">
             <span className="text-slate-400 dark:text-slate-500">
-              Desenvolvido por <span className="text-[#cfaf72] hover:underline" title="Desenvolvedor Líder">Lemos Faya de Arcanjo</span>
+              Desenvolvido por <a href="https://www.facebook.com/lemosmabiala.faya/" target="_blank" rel="noopener noreferrer" className="text-[#cfaf72] hover:underline font-extrabold" title="Ver Perfil do Desenvolvedor Líder">Lemos Faya de Arcanjo</a>
             </span>
             <span className="hidden sm:inline text-slate-300 dark:text-slate-700">•</span>
             <button 
@@ -6275,6 +6312,85 @@ function AppContent({ isDark, theme, setTheme }: { isDark: boolean, theme: "ligh
         privacyText={privacyText}
         termsText={termsText}
       />
+
+      {/* Onboarding Registration Modal for First-time Installation / Visitor Entry */}
+      <AnimatePresence>
+        {showOnboarding && (
+          <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{ type: "spring", duration: 0.5 }}
+              className="bg-white dark:bg-slate-900 rounded-[2.5rem] border border-[#cfaf72]/30 dark:border-white/10 shadow-2xl p-8 max-w-md w-full space-y-6 text-center"
+            >
+              <div className="w-16 h-16 bg-[#cfaf72]/10 text-[#cfaf72] rounded-full flex items-center justify-center mx-auto">
+                <GraduationCap size={32} />
+              </div>
+              
+              <div className="space-y-2">
+                <h3 className="text-xl font-black text-heading leading-tight dark:text-white">Matrícula da Escola da Fé</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-semibold">
+                  Bem-vindo à <span className="text-[#cfaf72]">Escola da Fé</span>! Para registrar sua instalação no sistema oficial do Supabase e acompanhar seu progresso teológico, identifique-se abaixo.
+                </p>
+              </div>
+
+              <div className="space-y-4 text-left">
+                <div>
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-[#cfaf72] mb-1.5">O Seu Nome de Estudante</label>
+                  <input
+                    type="text"
+                    value={onboardingName}
+                    onChange={(e) => {
+                      setOnboardingName(e.target.value);
+                      if (e.target.value.trim() !== "") {
+                        setOnboardingError("");
+                      }
+                    }}
+                    placeholder="Ex: Pastor Marcos Correia..."
+                    className="w-full bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-white border border-slate-200 dark:border-white/15 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#cfaf72]"
+                    maxLength={100}
+                    autoFocus
+                  />
+                  {onboardingError && (
+                    <p className="text-[10px] text-red-500 font-bold mt-1.5">{onboardingError}</p>
+                  )}
+                </div>
+                
+                <div className="p-4 bg-slate-50 dark:bg-slate-950/50 rounded-2xl border border-slate-100 dark:border-white/5 space-y-2">
+                  <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500 block">Sincronização Segura</span>
+                  <p className="text-[10px] text-slate-400 dark:text-slate-400 font-semibold leading-relaxed">
+                    O aplicativo registra o seu nome de estudante, sistema operacional e progresso de estudo. Seus dados são salvos com segurança no Supabase para uso da plataforma Escola da Fé.
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  const trimmed = onboardingName.trim();
+                  if (!trimmed) {
+                    setOnboardingError("Por favor, digite o seu nome para efetuar a matrícula.");
+                    return;
+                  }
+                  try {
+                    localStorage.setItem("escola_da_fe_user_name", trimmed);
+                    // Dispara o evento global para sincronizar no App.tsx e na Navbar
+                    window.dispatchEvent(new CustomEvent("register-user-device", { detail: { name: trimmed } }));
+                    setShowOnboarding(false);
+                  } catch (e) {
+                    console.warn("Erro ao salvar matricula:", e);
+                    setShowOnboarding(false);
+                  }
+                }}
+                className="w-full py-4 text-xs bg-[#cfaf72] text-slate-900 font-black rounded-xl uppercase tracking-wider hover:bg-white border border-[#cfaf72] hover:text-slate-900 transition-all duration-300 cursor-pointer shadow-lg shadow-[#cfaf72]/10"
+              >
+                Confirmar Matrícula & Entrar
+              </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       <PWAController />
       <LivretoManager />
