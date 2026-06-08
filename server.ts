@@ -258,6 +258,15 @@ async function startServer() {
         safeQuery("suporte_mensagens", "suporte")
       ]);
 
+      // Merges the loaded postagens with custom 'tipo' / 'type' saved locally in fallback to avoid missing database columns reverting them on load
+      const mergedPostagens = (postagens || []).map((p: any) => {
+        const localCopy = (fallback.postagens || []).find((local: any) => local.id === p.id);
+        if (localCopy && (localCopy.tipo || localCopy.type)) {
+          return { ...p, tipo: localCopy.tipo || localCopy.type };
+        }
+        return p;
+      });
+
       res.json({
         success: true,
         data: {
@@ -266,7 +275,7 @@ async function startServer() {
           historias,
           teologia,
           curso,
-          postagens,
+          postagens: mergedPostagens,
           configuracoes,
           posts,
           comments,
@@ -345,7 +354,13 @@ async function startServer() {
     }
 
     try {
-      const { data, error } = await supabase.from(dbTable).upsert(payload);
+      let supabasePayload = payload;
+      if (dbTable === "postagens") {
+        // Strip out 'tipo' or 'type' before upserting to Supabase so it does not fail due to missing schema column
+        const { tipo, type, ...rest } = payload;
+        supabasePayload = rest;
+      }
+      const { data, error } = await supabase.from(dbTable).upsert(supabasePayload);
       if (error) {
         console.log("[Supabase Sync Info] Fallback write to local database (missing remote schema or table):", error.message || error.code);
         if (error.code === "42P01" || error.code === "PGRST205") {

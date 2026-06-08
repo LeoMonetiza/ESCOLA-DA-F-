@@ -1657,6 +1657,7 @@ function Home({
     }
 
     if (editingId) {
+      const originalDate = announcements.find(a => a.id === editingId)?.date || new Date().toLocaleDateString("pt-BR");
       setAnnouncements(prev => prev.map(a => {
         if (a.id === editingId) {
           return {
@@ -1676,10 +1677,11 @@ function Home({
         body: JSON.stringify({
           id: editingId,
           titulo: newTitle,
-          data_publicacao: new Date().toLocaleDateString("pt-BR"),
+          data_publicacao: originalDate,
           mensagem: newMessage,
           autor: "Lemos Faya de Arcanjo",
-          imagem_url: newImageUrl
+          imagem_url: newImageUrl,
+          tipo: newType
         })
       })
       .then(() => {
@@ -1715,7 +1717,8 @@ function Home({
           data_publicacao: newNotice.date,
           mensagem: newNotice.message,
           autor: "Lemos Faya de Arcanjo",
-          imagem_url: newNotice.imageUrl
+          imagem_url: newNotice.imageUrl,
+          tipo: newNotice.type
         })
       })
       .then(() => {
@@ -5759,7 +5762,8 @@ function AppContent({ isDark, theme, setTheme }: { isDark: boolean, theme: "ligh
             date: row.data_publicacao,
             message: row.mensagem,
             author: row.autor || "Lemos Faya de Arcanjo",
-            imageUrl: row.imagem_url || row.image || ""
+            imageUrl: row.imagem_url || row.image || "",
+            type: row.tipo || row.type || "notification"
           }));
         setAnnouncements(() => {
           const merged = [...mappedComunicados];
