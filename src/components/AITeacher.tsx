@@ -122,9 +122,10 @@ export default function AITeacher() {
               <button 
                 onClick={handleSend}
                 disabled={isLoading || !prompt.trim()}
-                className="p-3 bg-primary text-white rounded-xl hover:bg-secondary disabled:opacity-50 transition-all flex items-center justify-center w-12 shadow-lg shadow-primary/20"
+                className="p-3 px-4 bg-primary text-white rounded-xl hover:bg-secondary disabled:opacity-50 transition-all flex items-center justify-center gap-1.5 shadow-lg shadow-primary/20 w-auto shrink-0"
               >
-                <Send size={16} />
+                <span className="text-xs font-black uppercase tracking-wider">Enviar</span>
+                <Send size={14} />
               </button>
             </div>
           </motion.div>

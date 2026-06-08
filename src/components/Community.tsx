@@ -21,7 +21,9 @@ import {
   CheckCircle,
   AlertCircle,
   Upload,
-  Image
+  Image,
+  Copy,
+  Check
 } from "lucide-react";
 import { cn } from "@/src/lib/utils";
 import { getSupabaseClient as getClientClient } from "../lib/supabaseClient";
@@ -157,6 +159,17 @@ export default function Community({
 
   // Expanded content tracking
   const [expandedPosts, setExpandedPosts] = useState<Record<string, boolean>>({});
+  const [copiedPostId, setCopiedPostId] = useState<string | null>(null);
+
+  const handleCopyPost = (text: string, postId: string) => {
+    try {
+      navigator.clipboard.writeText(text);
+      setCopiedPostId(postId);
+      setTimeout(() => setCopiedPostId(null), 2000);
+    } catch (err) {
+      console.error(err);
+    }
+  };
   // Comments input visibility tracking
   const [activeCommentPostId, setActiveCommentPostId] = useState<string | null>(null);
 
@@ -1418,10 +1431,11 @@ export default function Community({
                             />
                             <button
                               type="submit"
-                              className="bg-accent hover:bg-accent-light text-secondary font-black text-xs py-2 px-3.5 rounded-xl transition flex items-center justify-center shrink-0 cursor-pointer h-9 w-9"
+                              className="bg-accent hover:bg-accent-light text-secondary font-black text-xs py-2 px-3.5 rounded-xl transition flex items-center justify-center shrink-0 cursor-pointer h-9 gap-1.5 w-auto"
                               title="Publicar comentário"
                             >
-                              <Send size={12} />
+                              <span className="text-[10px] uppercase font-black tracking-wider">Comentar</span>
+                              <Send size={11} />
                             </button>
                           </div>
                         </div>
@@ -1452,9 +1466,31 @@ export default function Community({
                     <span className={cn("px-3 py-1.5 rounded-xl font-black text-2xs uppercase tracking-wider", meta.bg, meta.color)}>
                       {meta.label}
                     </span>
-                    <div className="flex items-center gap-1.5 text-xs text-muted font-bold font-mono">
-                      <Clock size={12} />
-                      {tryFormatDateShort(post.created_at)}
+                    <div className="flex items-center gap-1.5 font-sans">
+                      <button
+                        onClick={() => handleCopyPost(`${post.title}\n\n${post.content}`, post.id)}
+                        className={cn(
+                          "p-1.5 px-3 rounded-lg text-2xs font-extrabold uppercase transition-all flex items-center gap-1 shrink-0 cursor-pointer border border-transparent",
+                          copiedPostId === post.id
+                            ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
+                            : "bg-slate-50 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400"
+                        )}
+                        title="Copiar publicação"
+                      >
+                        {copiedPostId === post.id ? (
+                          <>
+                            <Check size={11} className="text-emerald-500" /> Copiado
+                          </>
+                        ) : (
+                          <>
+                            <Copy size={11} /> Copiar
+                          </>
+                        )}
+                      </button>
+                      <div className="flex items-center gap-1.5 text-xs text-muted font-bold font-mono">
+                        <Clock size={12} />
+                        {tryFormatDateShort(post.created_at)}
+                      </div>
                     </div>
                   </div>
 
@@ -1742,10 +1778,11 @@ export default function Community({
                           />
                           <button
                             type="submit"
-                            className="bg-accent hover:bg-accent-light text-secondary font-black text-xs py-2 px-3.5 rounded-xl transition flex items-center justify-center shrink-0 cursor-pointer h-9 w-9"
+                            className="bg-accent hover:bg-accent-light text-secondary font-black text-xs py-2 px-3.5 rounded-xl transition flex items-center justify-center shrink-0 cursor-pointer h-9 gap-1.5 w-auto"
                             title="Publicar comentário"
                           >
-                            <Send size={12} />
+                            <span className="text-[10px] uppercase font-black tracking-wider">Comentar</span>
+                            <Send size={11} />
                           </button>
                         </div>
                       </div>

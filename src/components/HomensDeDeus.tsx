@@ -27,7 +27,8 @@ import {
   EyeOff,
   Megaphone,
   Newspaper,
-  Star
+  Star,
+  Copy
 } from "lucide-react";
 import { cn } from "@/src/lib/utils";
 import { ThemeBanner } from "./SimulatedAds";
@@ -166,6 +167,19 @@ export default function HomensDeDeusView({
   const [search, setSearch] = useState("");
   const [selectedEra, setSelectedEra] = useState<string>("todos");
   const [selectedMan, setSelectedMan] = useState<HomemDeDeus | null>(null);
+  const [isCopied, setIsCopied] = useState(false);
+
+  const handleCopyContent = () => {
+    if (!selectedMan) return;
+    try {
+      const textToCopy = `${selectedMan.name}\n${selectedMan.era} • ${selectedMan.birthAndDeath}\n\nLegado Principal: ${selectedMan.mainLegacy}\n\n${selectedMan.story}`;
+      navigator.clipboard.writeText(textToCopy);
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 2000);
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   const [isInBooklet, setIsInBooklet] = useState(false);
   const [isFavorited, setIsFavorited] = useState(false);
@@ -1576,9 +1590,29 @@ export default function HomensDeDeusView({
 
                 <div className="flex items-center gap-2 z-10 shrink-0">
                   <button 
+                    onClick={handleCopyContent}
+                    className={cn(
+                      "p-2 bg-white/5 hover:bg-white/10 transition-all flex items-center justify-center gap-1.5 cursor-pointer border border-transparent rounded-xl",
+                      isCopied && "text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/25 border-emerald-500/30"
+                    )}
+                    title="Copiar Conteúdo"
+                  >
+                    {isCopied ? (
+                      <>
+                        <Check size={18} />
+                        <span className="text-[10px] uppercase font-black tracking-wider hidden sm:inline">Copiado</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy size={18} />
+                        <span className="text-[10px] uppercase font-black tracking-wider hidden sm:inline">Copiar</span>
+                      </>
+                    )}
+                  </button>
+                  <button 
                     onClick={handleToggleFavorite}
                     className={cn(
-                      "p-2 bg-white/5 hover:bg-white/10 transition-all flex items-center justify-center gap-1.5 cursor-pointer border border-transparent",
+                      "p-2 bg-white/5 hover:bg-white/10 transition-all flex items-center justify-center gap-1.5 cursor-pointer border border-transparent rounded-xl",
                       isFavorited && "text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 border-amber-500/20"
                     )}
                     title={isFavorited ? "Remover dos Favoritos" : "Adicionar aos Favoritos"}
@@ -1932,10 +1966,11 @@ export default function HomensDeDeusView({
                         />
                         <button
                           type="submit"
-                          className="bg-accent hover:bg-accent-light text-secondary font-black text-xs py-2 px-3.5 rounded-xl transition flex items-center justify-center shrink-0 cursor-pointer h-9 w-9"
+                          className="bg-accent hover:bg-accent-light text-secondary font-black text-xs py-2 px-3.5 rounded-xl transition flex items-center justify-center shrink-0 cursor-pointer h-9 gap-1.5 w-auto"
                           title="Publicar comentário"
                         >
-                          <Send size={15} />
+                          <span className="text-[10px] uppercase font-black tracking-wider">Comentar</span>
+                          <Send size={11} />
                         </button>
                       </div>
                     </div>

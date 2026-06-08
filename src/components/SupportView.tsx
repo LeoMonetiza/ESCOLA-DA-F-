@@ -22,7 +22,9 @@ import {
   Filter,
   Database,
   MessageSquare,
-  ExternalLink
+  ExternalLink,
+  Copy,
+  Check
 } from "lucide-react";
 import { getSupabaseClient, performResilientDbWrite, checkSupabaseConfigExists } from "../lib/supabaseClient";
 
@@ -152,6 +154,17 @@ export default function SupportView({ isAdmin, triggerConfirm }: SupportViewProp
 
   // Admin Active Session/Session Selected for replying
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
+  const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
+
+  const handleCopyMessage = (text: string, msgId: string) => {
+    try {
+      navigator.clipboard.writeText(text);
+      setCopiedMessageId(msgId);
+      setTimeout(() => setCopiedMessageId(null), 2000);
+    } catch (err) {
+      console.error(err);
+    }
+  };
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -595,7 +608,7 @@ export default function SupportView({ isAdmin, triggerConfirm }: SupportViewProp
           
           {/* LEFT COLUMN: Admin Session List (Only visible when isAdmin is true) */}
           {isAdmin && (
-            <div className="lg:col-span-4 bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/5 rounded-[2rem] p-6 shadow-xl flex flex-col h-[650px]">
+            <div className="lg:col-span-4 bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/5 rounded-[2rem] p-6 shadow-xl flex flex-col h-[450px] lg:h-[650px]">
               <div className="mb-6 flex items-center justify-between">
                 <div>
                   <div className="flex items-center gap-1">
@@ -663,7 +676,7 @@ export default function SupportView({ isAdmin, triggerConfirm }: SupportViewProp
           )}
 
           {/* RIGHT COLUMN: Chat Window (Occupies full grid when user, or remaining columns when admin) */}
-          <div className={`${isAdmin ? "lg:col-span-8" : "lg:col-span-12"} flex flex-col bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/5 rounded-[2rem] shadow-xl overflow-hidden h-[650px]`}>
+          <div className={`${isAdmin ? "lg:col-span-8" : "lg:col-span-12"} flex flex-col bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/5 rounded-[2rem] shadow-xl overflow-hidden h-[540px] xs:h-[580px] sm:h-[650px] lg:h-[720px]`}>
             
             {/* Chat Header */}
             <div className="p-6 bg-slate-50 dark:bg-white/5 border-b border-slate-100 dark:border-white/5 flex items-center justify-between shrink-0">
@@ -723,14 +736,17 @@ export default function SupportView({ isAdmin, triggerConfirm }: SupportViewProp
             )}
 
             {/* Chat Messages Scrolling Window */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-4 scrollbar-thin bg-slate-50/40 dark:bg-[#0b132b]/20">
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 scrollbar-thin bg-[#efeae2] dark:bg-[#0b141a] relative">
+              {/* Subtle background wallpaper dots pattern like WhatsApp */}
+              <div className="absolute inset-0 opacity-[0.06] dark:opacity-[0.04] pointer-events-none bg-[radial-gradient(#cfaf72_1.5px,transparent_1.5px)] [background-size:20px_20px] z-0" />
+
               {loading ? (
-                <div className="flex flex-col items-center justify-center h-full text-center py-12">
+                <div className="flex flex-col items-center justify-center h-full text-center py-12 relative z-10">
                   <RefreshCw size={24} className="text-[#cfaf72] animate-spin mb-3" />
                   <p className="text-xs text-muted font-bold font-mono">Buscando mensagens do servidor...</p>
                 </div>
               ) : activeThreadMessages.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-full text-center max-w-sm mx-auto py-12">
+                <div className="flex flex-col items-center justify-center h-full text-center max-w-sm mx-auto py-12 relative z-10">
                   <div className="w-16 h-16 rounded-full bg-[#cfaf72]/10 flex items-center justify-center mb-4">
                     <LifeBuoy size={28} className="text-[#cfaf72]" />
                   </div>
@@ -748,21 +764,21 @@ export default function SupportView({ isAdmin, triggerConfirm }: SupportViewProp
                   return (
                     <div 
                       key={msg.id}
-                      className={`flex flex-col ${isMine ? "items-end" : "items-start"}`}
+                      className={`flex flex-col relative z-10 ${isMine ? "items-end" : "items-start"}`}
                     >
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold font-mono">
+                      <div className="flex items-center gap-2 mb-0.5 px-1.5">
+                        <span className="text-[10px] text-slate-500 dark:text-slate-400 font-extrabold tracking-wide uppercase">
                           {isMine ? "Eu" : msg.nome_usuario}
                         </span>
-                        <span className="text-[9px] text-slate-450 dark:text-slate-600 font-mono">
+                        <span className="text-[9px] text-slate-400 dark:text-slate-500 font-mono font-medium">
                           {formattedTime}
                         </span>
                       </div>
 
-                      <div className={`relative max-w-[82%] sm:max-w-[70%] p-3.5 sm:p-4 rounded-2xl shadow-sm text-xs sm:text-sm border ${
+                      <div className={`relative max-w-[88%] sm:max-w-[70%] p-3 px-4 rounded-[1.25rem] shadow-md text-xs sm:text-sm border transition-all duration-150 ${
                         isMine 
-                          ? "bg-[#1C2541] dark:bg-slate-800 text-white border-transparent rounded-tr-none" 
-                          : "bg-white dark:bg-[#1C2541] text-slate-800 dark:text-slate-100 border-slate-150/40 dark:border-white/5 rounded-tl-none"
+                          ? "bg-[#d9fdd3] text-[#111b21] dark:bg-[#005c4b] dark:text-[#f1f5f9] border-[#d9fdd3]/20 dark:border-transparent rounded-tr-none" 
+                          : "bg-white text-[#111b21] dark:bg-[#202c33] dark:text-[#f1f5f9] border-slate-100/50 dark:border-transparent rounded-tl-none"
                       }`}>
                         {/* Optional Highlighted Emoji */}
                         {msg.emoji && (
@@ -773,9 +789,26 @@ export default function SupportView({ isAdmin, triggerConfirm }: SupportViewProp
 
                         {/* Text Message */}
                         {msg.mensagem && (
-                          <p className="whitespace-pre-wrap leading-relaxed font-semibold">
-                            {msg.mensagem}
-                          </p>
+                          <div className="relative group/msg pr-5">
+                            <p className="whitespace-pre-wrap leading-relaxed font-semibold">
+                              {msg.mensagem}
+                            </p>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleCopyMessage(msg.mensagem, msg.id);
+                              }}
+                              className="absolute top-0 right-0 p-1 text-slate-400 hover:text-[#00a884] dark:hover:text-[#cfaf72] opacity-50 sm:opacity-0 group-hover/msg:opacity-100 transition-opacity rounded cursor-pointer"
+                              title="Copiar texto"
+                            >
+                              {copiedMessageId === msg.id ? (
+                                <Check size={13} className="text-emerald-500" />
+                              ) : (
+                                <Copy size={13} />
+                              )}
+                            </button>
+                          </div>
                         )}
 
                         {/* Media File Preview or Download */}
@@ -840,7 +873,7 @@ export default function SupportView({ isAdmin, triggerConfirm }: SupportViewProp
 
             {/* Selected Highlight Emojis / Preview Banner before dispatching */}
             {(selectedEmoji || attachment) && (
-              <div className="px-6 py-2.5 bg-slate-50 dark:bg-slate-900 border-t border-slate-100 dark:border-white/5 flex flex-wrap items-center justify-between gap-3 shrink-0">
+              <div className="px-6 py-2.5 bg-slate-100 dark:bg-slate-900 border-t border-slate-200/50 dark:border-white/5 flex flex-wrap items-center justify-between gap-3 shrink-0 relative z-10">
                 <div className="flex items-center gap-3">
                   {selectedEmoji && (
                     <div className="flex items-center gap-1.5 bg-accent/20 text-accent px-3 py-1 rounded-xl text-xs font-bold border border-accent/25">
@@ -862,7 +895,7 @@ export default function SupportView({ isAdmin, triggerConfirm }: SupportViewProp
             )}
 
             {/* Input Text Form & Send Bars */}
-            <form onSubmit={handleSendMessage} className="p-4 sm:p-5 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-white/5 flex flex-col gap-3 shrink-0">
+            <form onSubmit={handleSendMessage} className="p-3 sm:p-4 bg-[#f0f2f5] dark:bg-[#1f2c34] border-t border-slate-200/50 dark:border-white/5 flex flex-col gap-2 shrink-0 relative z-10">
               
               <div className="flex items-center gap-2">
                 {/* Quick emoji ribbon */}
@@ -872,7 +905,7 @@ export default function SupportView({ isAdmin, triggerConfirm }: SupportViewProp
                       type="button"
                       key={emo}
                       onClick={() => handleQuickEmojiSelect(emo)}
-                      className={`text-base p-1 hover:bg-slate-100 dark:hover:bg-white/5 rounded-lg active:scale-90 transition-all cursor-pointer select-none ${selectedEmoji === emo ? "bg-accent/20 scale-110" : ""}`}
+                      className={`text-base p-1 hover:bg-white/40 dark:hover:bg-white/5 rounded-lg active:scale-95 transition-all cursor-pointer select-none ${selectedEmoji === emo ? "bg-accent/20 scale-110" : ""}`}
                     >
                       {emo}
                     </button>
@@ -884,7 +917,7 @@ export default function SupportView({ isAdmin, triggerConfirm }: SupportViewProp
                   <button
                     type="button"
                     onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                    className={`p-2 hover:bg-slate-100 dark:hover:bg-white/5 text-slate-400 hover:text-[#cfaf72] rounded-xl transition-all cursor-pointer ${showEmojiPicker ? "text-[#cfaf72] bg-slate-100 dark:bg-white/5" : ""}`}
+                    className={`p-2 hover:bg-white/40 dark:hover:bg-white/5 text-slate-500 dark:text-slate-350 rounded-xl transition-all cursor-pointer ${showEmojiPicker ? "text-[#cfaf72] bg-white/40 dark:bg-white/5" : ""}`}
                     title="Inserir Reação"
                   >
                     <Smile size={18} />
@@ -896,14 +929,14 @@ export default function SupportView({ isAdmin, triggerConfirm }: SupportViewProp
                         initial={{ opacity: 0, scale: 0.95, y: 10 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                        className="absolute bottom-full right-0 mb-2 p-3 bg-white dark:bg-[#1C2541] border border-slate-200 dark:border-white/10 rounded-2xl shadow-2xl z-40 grid grid-cols-6 gap-2 w-48 text-center"
+                        className="absolute bottom-full right-0 mb-3 p-3 bg-white dark:bg-[#1C2541] border border-slate-200 dark:border-white/10 rounded-2xl shadow-2xl z-50 grid grid-cols-6 gap-2 w-48 text-center"
                       >
                         {QUICK_EMOJIS.map(emo => (
                           <button
                             type="button"
                             key={emo + "_dw"}
                             onClick={() => handleQuickEmojiSelect(emo)}
-                            className="text-lg p-1.5 hover:bg-slate-100 dark:hover:bg-white/10 rounded-xl transition-all cursor-pointer select-none"
+                            className="text-lg p-1.5 hover:bg-slate-100 dark:hover:bg-white/10 rounded-xl transition-all cursor-pointer select-none text-slate-800 dark:text-white"
                           >
                             {emo}
                           </button>
@@ -914,7 +947,7 @@ export default function SupportView({ isAdmin, triggerConfirm }: SupportViewProp
                 </div>
               </div>
 
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 sm:gap-3 w-full">
                 {/* Attachment inputs */}
                 <div className="relative shrink-0">
                   <input
@@ -926,12 +959,12 @@ export default function SupportView({ isAdmin, triggerConfirm }: SupportViewProp
                   />
                   <label
                     htmlFor="support-file-input"
-                    className={`p-3.5 bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 border border-transparent hover:border-slate-300 dark:hover:border-white/10 text-slate-500 dark:text-slate-400 rounded-2xl transition-all cursor-pointer flex items-center justify-center relative ${isUploading ? "animate-pulse" : ""}`}
+                    className={`p-3 bg-white dark:bg-[#202c33] hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-200/50 dark:border-none text-slate-500 dark:text-slate-400 rounded-full transition-all cursor-pointer flex items-center justify-center w-11 h-11 relative ${isUploading ? "animate-pulse" : ""}`}
                     title="Anexar Comprovativo, Documento ou Imagem"
                   >
                     <Paperclip size={18} />
                     {isUploading && (
-                      <span className="absolute inset-0 bg-black/40 rounded-2xl flex items-center justify-center">
+                      <span className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center">
                         <RefreshCw size={11} className="text-white animate-spin" />
                       </span>
                     )}
@@ -939,22 +972,24 @@ export default function SupportView({ isAdmin, triggerConfirm }: SupportViewProp
                 </div>
 
                 {/* Input message text bar */}
-                <input
-                  type="text"
-                  value={inputText}
-                  onChange={(e) => setInputText(e.target.value)}
-                  placeholder="Digite sua mensagem de suporte..."
-                  className="flex-1 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/5 text-slate-800 dark:text-white rounded-2xl py-3.5 px-5 text-sm font-semibold focus:outline-none focus:border-accent"
-                  maxLength={1500}
-                />
+                <div className="flex-1 min-w-0">
+                  <input
+                    type="text"
+                    value={inputText}
+                    onChange={(e) => setInputText(e.target.value)}
+                    placeholder="Escreva uma mensagem..."
+                    className="w-full bg-white dark:bg-[#2a3942] border border-slate-200/60 dark:border-none text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 rounded-full py-3 px-5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-[#00a884]/30"
+                    maxLength={1500}
+                  />
+                </div>
 
                 {/* Send trigger */}
                 <button
                   type="submit"
-                  className="p-3.5 bg-[#cfaf72] hover:bg-white text-slate-900 hover:text-slate-900 font-bold border border-[#cfaf72] rounded-2xl shadow-lg active:scale-95 transition-all cursor-pointer shrink-0"
+                  className="w-11 h-11 bg-[#00a884] dark:bg-[#00a884] hover:bg-[#008f72] dark:hover:bg-[#008f72] text-white font-bold rounded-full shadow-md active:scale-90 transition-all cursor-pointer shrink-0 flex items-center justify-center"
                   title="Mandar Mensagem"
                 >
-                  <Send size={18} />
+                  <Send size={18} className="translate-x-[1px]" />
                 </button>
               </div>
 

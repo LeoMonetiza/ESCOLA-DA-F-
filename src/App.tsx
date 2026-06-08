@@ -747,7 +747,23 @@ function StudyDetailModal({
   const location = useLocation();
   const [isInBooklet, setIsInBooklet] = useState(false);
   const [isFavorited, setIsFavorited] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
   const optimizedContent = optimizeItemContent(item, location.pathname);
+
+  const handleCopyContent = () => {
+    try {
+      const verse = getBibleVerseForItem(item);
+      const verseStr = verse && verse.text && verse.text !== "N/A" 
+        ? `"${verse.text}" — ${verse.reference}\n\n` 
+        : "";
+      const textToCopy = `${item.title || item.name}\n${item.description || item.meaning || ""}\n\n${verseStr}${optimizedContent}`;
+      navigator.clipboard.writeText(textToCopy);
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 2000);
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   useEffect(() => {
     const checkState = () => {
@@ -844,6 +860,26 @@ function StudyDetailModal({
             <p className="text-accent text-xs font-black uppercase tracking-wider">{item.description || item.meaning || 'Estudo Bíblico'}</p>
           </div>
           <div className="flex items-center gap-2 z-10 shrink-0">
+            <button 
+              onClick={handleCopyContent}
+              className={cn(
+                "p-2 bg-white/10 rounded-xl hover:bg-white/20 transition-all flex items-center justify-center gap-1.5 cursor-pointer border border-transparent",
+                isCopied && "text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border-emerald-500/20"
+              )}
+              title="Copiar Conteúdo"
+            >
+              {isCopied ? (
+                <>
+                  <Check size={18} />
+                  <span className="text-[10px] uppercase font-black tracking-wider hidden sm:inline">Copiado</span>
+                </>
+              ) : (
+                <>
+                  <Copy size={18} />
+                  <span className="text-[10px] uppercase font-black tracking-wider hidden sm:inline">Copiar</span>
+                </>
+              )}
+            </button>
             <button 
               onClick={handleToggleFavorite}
               className={cn(
@@ -2162,51 +2198,114 @@ function Home({
             <p className="text-muted text-sm mt-1">Gerencie canais sociais e os textos legais exibidos para os usuários finais nesta plataforma.</p>
           </div>
 
-          {/* TAB VISIBILITY CONFIGURATION SLIDERS */}
+          {/* TAB VISIBILITY CONFIGURATION TABLE */}
           <div className="space-y-4 border-b border-indigo-500/10 dark:border-white/5 pb-8">
-            <h4 className="text-xs font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">0. Controlo de Exibição de Abas para Alunos (Mural, Livraria e Suporte)</h4>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              
-
-
-              {/* Suporte Tab Toggle */}
-              <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-[#cfaf72]/10 dark:border-white/5 shadow-sm flex flex-col justify-between gap-4">
-                <div className="flex items-start gap-3">
-                  <div className="p-3 bg-cyan-500/10 text-cyan-400 rounded-2xl shrink-0">
-                    <LifeBuoy size={22} />
-                  </div>
-                  <div>
-                    <h5 className="text-sm font-black text-heading">Aba Suporte Geral</h5>
-                    <p className="text-[11px] text-slate-400 dark:text-slate-400 mt-1 font-semibold leading-relaxed">Permite aos utilizadores enviar mensagens, comprovativos eletrónicos, e emojis.</p>
-                  </div>
-                </div>
-                <div className="flex items-center justify-between border-t border-slate-100/15 pt-4">
-                  <span className={`text-[11px] font-black ${enabledTabs?.suporte ? 'text-emerald-400' : 'text-slate-400'}`}>
-                    {enabledTabs?.suporte ? '● ATIVADO (Visível)' : '○ DESATIVADO (Oculto)'}
-                  </span>
-                  <label className="relative inline-flex items-center cursor-pointer select-none">
-                    <input 
-                      type="checkbox" 
-                      className="sr-only peer" 
-                      checked={!!enabledTabs?.suporte} 
-                      onChange={(e) => {
-                        const val = e.target.checked;
-                        setEnabledTabs((prev: any) => {
-                          const next = { ...prev, suporte: val };
-                          fetch("/api/db/configuracoes/add", {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({ chave: "tab_suporte", valor: val ? "true" : "false" })
-                          }).catch(err => console.warn(err));
-                          return next;
-                        });
-                      }}
-                    />
-                    <div className="w-11 h-6 bg-slate-200 dark:bg-slate-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#cfaf72]"></div>
-                  </label>
-                </div>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h4 className="text-xs font-black uppercase tracking-wider text-slate-400 dark:text-[#cfaf72]">0. Tabela de Controle de Exibição das Abas</h4>
+                <p className="text-xs text-muted mt-1 leading-relaxed">Gerencie em lote quais recursos e páginas oficiais da Escola da Fé estarão visíveis ou invisíveis para os alunos.</p>
               </div>
+            </div>
 
+            <div className="overflow-hidden bg-card-light dark:bg-slate-900/60 rounded-3xl border border-[#cfaf72]/15 dark:border-white/5 shadow-xl">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-slate-50 dark:bg-slate-950/40 border-b border-[#cfaf72]/10 dark:border-white/5">
+                      <th className="py-4.5 px-6 text-2xs font-black uppercase tracking-widest text-[#cfaf72]">Aba e Ícone</th>
+                      <th className="py-4.5 px-6 text-2xs font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">Rota Associada</th>
+                      <th className="py-4.5 px-6 text-2xs font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">Descrição Funcional</th>
+                      <th className="py-4.5 px-6 text-2xs font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 text-center">Status Público</th>
+                      <th className="py-4.5 px-6 text-2xs font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 text-right">Ação</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-white/5">
+                    {[
+                      {
+                        key: "comunidade",
+                        dbKey: "tab_comunidade",
+                        name: "Mural da Comunidade",
+                        icon: <MessageCircle size={18} className="text-[#cfaf72]" />,
+                        path: "/comunidade",
+                        description: "Área interativa de avisos e novidades onde alunos participam de conversas edificantes.",
+                        status: !!enabledTabs?.comunidade,
+                      },
+                      {
+                        key: "livros",
+                        dbKey: "tab_livros",
+                        name: "Livraria e PDFs",
+                        icon: <BookOpen size={18} className="text-[#cfaf72]" />,
+                        path: "/livros",
+                        description: "Seção de downloads e leitura gratuita de livros confessionalmente corretos.",
+                        status: !!enabledTabs?.livros,
+                      },
+                      {
+                        key: "suporte",
+                        dbKey: "tab_suporte",
+                        name: "Canal de Suporte",
+                        icon: <LifeBuoy size={18} className="text-cyan-400" />,
+                        path: "/suporte",
+                        description: "Permite que os alunos enviem dúvidas de estudo, mensagens e comprovantes diretamente ao Lemos.",
+                        status: !!enabledTabs?.suporte,
+                      }
+                    ].map((tab, idx) => (
+                      <tr key={tab.key} className="hover:bg-slate-50/50 dark:hover:bg-slate-950/20 transition-all">
+                        <td className="py-5 px-6 whitespace-nowrap">
+                          <div className="flex items-center gap-3">
+                            <div className="p-2.5 bg-slate-100 dark:bg-slate-800 rounded-xl shrink-0">
+                              {tab.icon}
+                            </div>
+                            <span className="font-extrabold text-[#0b132b] dark:text-white text-sm">{tab.name}</span>
+                          </div>
+                        </td>
+                        <td className="py-5 px-6 whitespace-nowrap">
+                          <span className="font-mono text-2xs bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 py-1.5 px-3 rounded-lg border border-slate-200/50 dark:border-white/5 font-black">
+                            {tab.path}
+                          </span>
+                        </td>
+                        <td className="py-5 px-6 min-w-[280px]">
+                          <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-semibold">
+                            {tab.description}
+                          </p>
+                        </td>
+                        <td className="py-5 px-6 text-center whitespace-nowrap">
+                          <span className={cn(
+                            "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider",
+                            tab.status 
+                              ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/15"
+                              : "bg-slate-100 dark:bg-slate-950 text-slate-400 border border-slate-200/50 dark:border-white/5"
+                          )}>
+                            <span className={cn("w-1.5 h-1.5 rounded-full", tab.status ? "bg-emerald-500 animate-pulse" : "bg-slate-400")} />
+                            {tab.status ? "Ativo" : "Oculto"}
+                          </span>
+                        </td>
+                        <td className="py-5 px-6 text-right whitespace-nowrap">
+                          <label className="relative inline-flex items-center cursor-pointer select-none">
+                            <input 
+                              type="checkbox" 
+                              className="sr-only peer" 
+                              checked={tab.status} 
+                              onChange={(e) => {
+                                const val = e.target.checked;
+                                setEnabledTabs((prev: any) => {
+                                  const next = { ...prev, [tab.key]: val };
+                                  fetch("/api/db/configuracoes/add", {
+                                    method: "POST",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({ chave: tab.dbKey, valor: val ? "true" : "false" })
+                                  }).catch(err => console.warn(err));
+                                  return next;
+                                });
+                              }}
+                            />
+                            <div className="w-11 h-6 bg-slate-200 dark:bg-slate-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#cfaf72]"></div>
+                          </label>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
 
@@ -4873,18 +4972,18 @@ function AppContent({ isDark, theme, setTheme }: { isDark: boolean, theme: "ligh
   const [privacyText, setPrivacyText] = useState(() => {
     try {
       const saved = localStorage.getItem("escola_da_fe_privacy");
-      return saved || `O aplicativo Escola da Fé respeita integralmente a sua privacidade. Todas as informações de progresso de leitura, histórico de questionários, módulos concluídos, notas de lições e itens marcados como favoritos são armazenados e processados exclusivamente de forma local no armazenamento do navegador (LocalStorage) do seu próprio dispositivo.\n\nNenhum dado pessoal, informação de navegação ou dados de transações são enviados ou guardados em servidores externos de nuvem gerenciados por nós.\n\nPara apoiar financeiramente a manutenção periódica do aplicativo, tradução de novos módulos e ampliação teológica do acervo, são exibidas campanhas publicitárias de engajamento interno e ministerial sob coordenação do desenvolvedor Lemos Faya de Arcanjo.`;
+      return saved || `POLÍTICA DE PRIVACIDADE — ESCOLA DA FÉ\n\nEste documento descreve como o aplicativo "Escola da Fé" lida com os dados e informações coletados de seus usuários. Ao utilizar o aplicativo, você concorda com as diretrizes descritas a seguir.\n\n1. SEGURANÇA E ARMAZENAMENTO DE DADOS\nTodas as informações relacionadas ao seu progresso no aplicativo — incluindo histórico de estudos concluídos, lições respondidas, notas pessoais de leitura, termos do dicionário salvos e conteúdos marcados como favoritos — são armazenadas e processadas LOCALMENTE em seu próprio dispositivo móvel ou computador, através do armazenamento do navegador (LocalStorage). Nós não coletamos, nem transferimos estes dados pessoais para servidores externos públicos ou privados.\n\n2. CANAIS DE SUPORTE E COMUNIDADE\nAo enviar uma mensagem utilizando o nosso Canal de Suporte integrado ou ao participar de publicações na aba Comunidade, alguns dados básicos (como o nome fornecido e o conteúdo da sua mensagem/anexo) são transmitidos de forma segura para o nosso banco de dados central apenas para fins de viabilizar a comunicação teológica, moderação e auxílio pastoral. Estes dados jamais serão compartilhados, vendidos ou utilizados para propósitos de marketing terceirizado.\n\n3. ANÚNCIOS NATIVOS E SUSTENTABILIDADE\nPara auxiliar na sustentabilidade financeira de manutenção técnica do sistema, tradução periódica de novos manuscritos e ampliação constante do acervo de teologia reformada, o aplicativo exibe campanhas informativas e anúncios de engajamento interno sob coordenação direta do criador Lemos Faya de Arcanjo.\n\n4. DIREITO DOS USUÁRIOS\nEm conformidade com a Lei Geral de Proteção de Dados (LGPD), você poderá, a qualquer momento, limpar integralmente todos os seus dados locais limpando o cache de dados do aplicativo/navegador, ou solicitar a exclusão de algum comentário postado em nossa aba Comunidade por meio do canal de suporte do próprio app.\n\nÚltima atualização: Junho de 2026.`;
     } catch {
-      return `O aplicativo Escola da Fé respeita integralmente a sua privacidade. Todas as informações de progresso de leitura, histórico de questionários, módulos concluídos, notas de lições e itens marcados como favoritos são armazenados e processados exclusivamente de forma local no armazenamento do navegador (LocalStorage) do seu próprio dispositivo.\n\nNenhum dado pessoal, informação de navegação ou dados de transações são enviados ou guardados em servidores externos de nuvem gerenciados por nós.\n\nPara apoiar financeiramente a manutenção periódica do aplicativo, tradução de novos módulos e ampliação teológica do acervo, são exibidas campanhas publicitárias de engajamento interno e ministerial sob coordenação do desenvolvedor Lemos Faya de Arcanjo.`;
+      return `POLÍTICA DE PRIVACIDADE — ESCOLA DA FÉ\n\nEste documento descreve como o aplicativo "Escola da Fé" lida com os dados e informações coletados de seus usuários. Ao utilizar o aplicativo, você concorda com as diretrizes descritas a seguir.\n\n1. SEGURANÇA E ARMAZENAMENTO DE DADOS\nTodas as informações relacionadas ao seu progresso no aplicativo — incluindo histórico de estudos concluídos, lições respondidas, notas pessoais de leitura, termos do dicionário salvos e conteúdos marcados como favoritos — são armazenadas e processadas LOCALMENTE em seu próprio dispositivo móvel ou computador, através do armazenamento do navegador (LocalStorage). Nós não coletamos, nem transferimos estes dados pessoais para servidores externos públicos ou privados.\n\n2. CANAIS DE SUPORTE E COMUNIDADE\nAo enviar uma mensagem utilizando o nosso Canal de Suporte integrado ou ao participar de publicações na aba Comunidade, alguns dados básicos (como o nome fornecido e o conteúdo da sua mensagem/anexo) são transmitidos de forma segura para o nosso banco de dados central apenas para fins de viabilizar a comunicação teológica, moderação e auxílio pastoral. Estes dados jamais serão compartilhados, vendidos ou utilizados para propósitos de marketing terceirizado.\n\n3. ANÚNCIOS NATIVOS E SUSTENTABILIDADE\nPara auxiliar na sustentabilidade financeira de manutenção técnica do sistema, tradução periódica de novos manuscritos e ampliação constante do acervo de teologia reformada, o aplicativo exibe campanhas informativas e anúncios de engajamento interno sob coordenação direta do criador Lemos Faya de Arcanjo.\n\n4. DIREITO DOS USUÁRIOS\nEm conformidade com a Lei Geral de Proteção de Dados (LGPD), você poderá, a qualquer momento, limpar integralmente todos os seus dados locais limpando o cache de dados do aplicativo/navegador, ou solicitar a exclusão de algum comentário postado em nossa aba Comunidade por meio do canal de suporte do próprio app.\n\nÚltima atualização: Junho de 2026.`;
     }
   });
 
   const [termsText, setTermsText] = useState(() => {
     try {
       const saved = localStorage.getItem("escola_da_fe_terms");
-      return saved || `Todo o conteúdo teológico disponibilizado no Escola da Fé — incluindo os Estudos Temáticos, Dicionário Bíblico de Termos, Módulos Teológicos de Doutrina e Lições do Curso de Introdução — é fornecido gratuitamente apenas com propósitos de aprendizado pessoal, edificação espiritual de comunidades eclesiásticas e consulta acadêmica sem fins lucrativos sob a tutela do Desenvolvedor Principal Lemos Faya de Arcanjo.\n\nÉ estritamente vedado o uso comercial dos materiais (venda, revenda de cópias físicas ou cursos pagos derivados) sob pena das sanções cabíveis decorrentes da violação de direitos autorais de produção.\n\nAs explicações teológicas baseiam-se na exegese gramático-histórica das Escrituras Sagradas, alinhando-se majoritariamente aos padrões de confissões reformadas dogmáticas clássicas.`;
+      return saved || `TERMOS DE USO — ESCOLA DA FÉ\n\nSeja bem-vindo ao "Escola da Fé". Ao acessar e utilizar este aplicativo, você aceita e concorda em cumprir e ser regido pelos seguintes Termos de Uso. Se você não concorda com qualquer parte destes termos, solicitamos que não continue a utilizar o aplicativo.\n\n1. PROPRIEDADE INTELECTUAL E USO DO CONTEÚDO\nTodo o acervo teológico disponibilizado no aplicativo — incluindo Estudos Bíblicos, artigos, definições de termos no Dicionário, biografias, tópicos doutrinários da Teologia Reformada, lições e questionários do Curso de Introdução — é de autoria do Desenvolvedor Principal Lemos Faya de Arcanjo ou está sob licenças/domínio público aplicáveis.\nOs materiais são disponibilizados de forma gratuita e destinam-se estritamente ao aprendizado pessoal, edificação espiritual individual ou em grupos eclesiásticos locais, e pesquisas teológicas sem fins lucrativos.\n\n2. RESTRIÇÕES DE USO COMERCIAL\nÉ TERMINANTEMENTE PROIBIDA a exploração comercial, venda, revenda, licenciamento, cobrança de matrículas baseadas nos cursos integrados ou distribuição física em massa do conteúdo contido no "Escola da Fé" sem a autorização prévia e expressa por escrito do titular da obra.\n\n3. CONDUTA DO USUÁRIO NA COMUNIDADE E SUPORTE\nAo participar da aba "Comunidade", inserindo comentários ou criando publicações, e ao enviar mensagens no "Canal de Suporte", você se compromete a:\n- Agir com respeito mútuo, amor cristão e moderação teológica;\n- Não proferir discursos de ódio, ofensas de cunho pessoal, assédio moral ou discriminações de qualquer natureza;\n- Não postar mídias, imagens, links ou textos que contenham malware, vírus ou spam publicitário não autorizado;\n- Não realizar a divulgação de marcas de terceiros, pirataria ou propósitos comerciais.\nO administrador reserva-se o total direito de deletar, suspender ou moderar qualquer publicação inadequada sem aviso prévio.\n\n4. ALINHAMENTO DOUTRINÁRIO\nAs explicações e respostas teológicas oferecidas no aplicativo baseiam-se na perspectiva bíblica histórica, alinhando-se de forma geral aos padrões protestantes clássicos de confessionalidade reformada. A disponibilização de tópicos não constitui imposição doutrinária, mas sim material informativo e acadêmico de suporte para o enriquecimento doutrinário do próprio usuário.\n\n5. ISENÇÃO DE RESPONSABILIDADE E ALTERAÇÕES\nO aplicativo "Escola da Fé" é fornecido "como está" (as-is), sem garantias de funcionamento 100% ininterrupto ou isento de bugs. Reservamo-nos o direito de alterar, complementar ou descontinuar qualquer recurso, aba teológica ou lição a qualquer momento. Estes Termos de Uso também podem ser alterados periodicamente.\n\nÚltima atualização: Junho de 2026.`;
     } catch {
-      return `Todo o conteúdo teológico disponibilizado no Escola da Fé — incluindo os Estudos Temáticos, Dicionário Bíblico de Termos, Módulos Teológicos de Doutrina e Lições do Curso de Introdução — é fornecido gratuitamente apenas com propósitos de aprendizado pessoal, edificação espiritual de comunidades eclesiásticas e consulta acadêmica sem fins lucrativos sob a tutela do Desenvolvedor Principal Lemos Faya de Arcanjo.\n\nÉ estritamente vedado o uso comercial dos materiais (venda, revenda de cópias físicas ou cursos pagos derivados) sob pena das sanções cabíveis decorrentes da violação de direitos autorais de produção.\n\nAs explicações teológicas baseiam-se na exegese gramático-histórica das Escrituras Sagradas, alinhando-se majoritariamente aos padrões de confissões reformadas dogmáticas clássicas.`;
+      return `TERMOS DE USO — ESCOLA DA FÉ\n\nSeja bem-vindo ao "Escola da Fé". Ao acessar e utilizar este aplicativo, você aceita e concorda em cumprir e ser regido pelos seguintes Termos de Uso. Se você não concorda com qualquer parte destes termos, solicitamos que não continue a utilizar o aplicativo.\n\n1. PROPRIEDADE INTELECTUAL E USO DO CONTEÚDO\nTodo o acervo teológico disponibilizado no aplicativo — incluindo Estudos Bíblicos, artigos, definições de termos no Dicionário, biografias, tópicos doutrinários da Teologia Reformada, lições e questionários do Curso de Introdução — é de autoria do Desenvolvedor Principal Lemos Faya de Arcanjo ou está sob licenças/domínio público aplicáveis.\nOs materiais são disponibilizados de forma gratuita e destinam-se estritamente ao aprendizado pessoal, edificação espiritual individual ou em grupos eclesiásticos locais, e pesquisas teológicas sem fins lucrativos.\n\n2. RESTRIÇÕES DE USO COMERCIAL\nÉ TERMINANTEMENTE PROIBIDA a exploração comercial, venda, revenda, licenciamento, cobrança de matrículas baseadas nos cursos integrados ou distribuição física em massa do conteúdo contido no "Escola da Fé" sem a autorização prévia e expressa por escrito do titular da obra.\n\n3. CONDUTA DO USUÁRIO NA COMUNIDADE E SUPORTE\nAo participar da aba "Comunidade", inserindo comentários ou criando publicações, e ao enviar mensagens no "Canal de Suporte", você se compromete a:\n- Agir com respeito mútuo, amor cristão e moderação teológica;\n- Não proferir discursos de ódio, ofensas de cunho pessoal, assédio moral ou discriminações de qualquer natureza;\n- Não postar mídias, imagens, links ou textos que contenham malware, vírus ou spam publicitário não autorizado;\n- Não realizar a divulgação de marcas de terceiros, pirataria ou propósitos comerciais.\nO administrador reserva-se o total direito de deletar, suspender ou moderar qualquer publicação inadequada sem aviso prévio.\n\n4. ALINHAMENTO DOUTRINÁRIO\nAs explicações e respostas teológicas oferecidas no aplicativo baseiam-se na perspectiva bíblica histórica, alinhando-se de forma geral aos padrões protestantes clássicos de confessionalidade reformada. A disponibilização de tópicos não constitui imposição doutrinária, mas sim material informativo e acadêmico de suporte para o enriquecimento doutrinário do próprio usuário.\n\n5. ISENÇÃO DE RESPONSABILIDADE E ALTERAÇÕES\nO aplicativo "Escola da Fé" é fornecido "como está" (as-is), sem garantias de funcionamento 100% ininterrupto ou isento de bugs. Reservamo-nos o direito de alterar, complementar ou descontinuar qualquer recurso, aba teológica ou lição a qualquer momento. Estes Termos de Uso também podem ser alterados periodicamente.\n\nÚltima atualização: Junho de 2026.`;
     }
   });
 
