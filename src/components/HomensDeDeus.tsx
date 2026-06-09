@@ -31,6 +31,7 @@ import {
   Copy
 } from "lucide-react";
 import { cn } from "@/src/lib/utils";
+import { dbGet, dbPut } from "../lib/indexedDb";
 import { ThemeBanner } from "./SimulatedAds";
 import { getSupabaseClient, performResilientDbWrite } from "../lib/supabaseClient";
 
@@ -831,14 +832,13 @@ export default function HomensDeDeusView({
   }, []);
 
   useEffect(() => {
-    const checkState = () => {
+    const checkState = async () => {
       if (!selectedMan) {
         setIsInBooklet(false);
         return;
       }
       try {
-        const saved = localStorage.getItem("escola_da_fe_booklet");
-        const booklet = saved ? JSON.parse(saved) : [];
+        const booklet = await dbGet<any[]>("anotacoes", "user_booklet") || [];
         setIsInBooklet(booklet.some((bi: any) => bi.id === selectedMan.id));
       } catch {
         setIsInBooklet(false);
@@ -851,14 +851,13 @@ export default function HomensDeDeusView({
   }, [selectedMan]);
 
   useEffect(() => {
-    const checkFavState = () => {
+    const checkFavState = async () => {
       if (!selectedMan) {
         setIsFavorited(false);
         return;
       }
       try {
-        const saved = localStorage.getItem("escola_da_fe_favorites");
-        const favs = saved ? JSON.parse(saved) : [];
+        const favs = await dbGet<any[]>("favoritos", "favorites") || [];
         setIsFavorited(favs.some((f: any) => f.id === selectedMan.id));
       } catch {
         setIsFavorited(false);
@@ -870,11 +869,10 @@ export default function HomensDeDeusView({
     return () => window.removeEventListener("favorites-updated", checkFavState);
   }, [selectedMan]);
 
-  const handleToggleFavorite = () => {
+  const handleToggleFavorite = async () => {
     if (!selectedMan) return;
     try {
-      const saved = localStorage.getItem("escola_da_fe_favorites");
-      let favs = saved ? JSON.parse(saved) : [];
+      const favs = await dbGet<any[]>("favoritos", "favorites") || [];
       const index = favs.findIndex((f: any) => f.id === selectedMan.id);
       if (index > -1) {
         favs.splice(index, 1);
@@ -893,7 +891,7 @@ export default function HomensDeDeusView({
         favs.push(favItem);
         setIsFavorited(true);
       }
-      localStorage.setItem("escola_da_fe_favorites", JSON.stringify(favs));
+      await dbPut("favoritos", "favorites", favs);
       window.dispatchEvent(new CustomEvent("favorites-updated"));
     } catch (e) {
       console.error(e);

@@ -20,6 +20,7 @@ import {
 import { motion, AnimatePresence } from "motion/react";
 import { jsPDF } from "jspdf";
 import { cn } from "@/src/lib/utils";
+import { dbGet, dbPut, safeStorageWrite } from "../lib/indexedDb";
 
 // --- Types ---
 interface BookletItem {
@@ -42,28 +43,15 @@ export const addToBookletEvent = (item: { id: string; title: string; category?: 
 };
 
 export default function LivretoManager() {
-  const [booklet, setBooklet] = useState<BookletItem[]>(() => {
-    try {
-      const saved = localStorage.getItem("escola_da_fe_booklet");
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
+  const [booklet, setBooklet] = useState<BookletItem[]>([]);
+  const [isLoaded, setIsLoaded] = useState(false);
 
   const [isOpen, setIsOpen] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   
   // Monetization & Download Counts
-  const [downloadCount, setDownloadCount] = useState<number>(() => {
-    try {
-      const saved = localStorage.getItem("escola_da_fe_downloads");
-      return saved ? parseInt(saved, 10) : 0;
-    } catch {
-      return 0;
-    }
-  });
+  const [downloadCount, setDownloadCount] = useState<number>(0);
 
   // Forced Ad display
   const [showForcedAd, setShowForcedAd] = useState(false);
@@ -71,18 +59,45 @@ export default function LivretoManager() {
   const [isAdClosingAllowed, setIsAdClosingAllowed] = useState(false);
   const [pendingFormat, setPendingFormat] = useState<"pdf" | "docx" | null>(null);
 
+  // Load booklet and downloadCount on mount
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const savedBooklet = await dbGet<BookletItem[]>("anotacoes", "user_booklet");
+        if (savedBooklet && Array.isArray(savedBooklet)) {
+          setBooklet(savedBooklet);
+        }
+      } catch (e) {
+        console.error("Error loading booklet from indexedDB", e);
+      } finally {
+        setIsLoaded(true);
+      }
+
+      try {
+        const savedDownloads = localStorage.getItem("escola_da_fe_downloads");
+        if (savedDownloads) {
+          setDownloadCount(parseInt(savedDownloads, 10) || 0);
+        }
+      } catch {}
+    }
+    loadData();
+  }, []);
+
   // Synchronize booklet details
   useEffect(() => {
-    localStorage.setItem("escola_da_fe_booklet", JSON.stringify(booklet));
+    if (!isLoaded) return;
+    
+    dbPut("anotacoes", "user_booklet", booklet);
     
     // Dispatch custom event to notify components that items changed (so their buttons update state)
     window.dispatchEvent(new CustomEvent("booklet-updated", { detail: booklet }));
-  }, [booklet]);
+  }, [booklet, isLoaded]);
 
   // Synchronize download metrics
   useEffect(() => {
-    localStorage.setItem("escola_da_fe_downloads", downloadCount.toString());
-  }, [downloadCount]);
+    if (!isLoaded) return;
+    safeStorageWrite("escola_da_fe_downloads", downloadCount.toString());
+  }, [downloadCount, isLoaded]);
 
   // Listener for dynamic Add To Booklet from other page views
   useEffect(() => {

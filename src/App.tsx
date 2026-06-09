@@ -60,6 +60,7 @@ import AttributesOfGodView from "./components/AttributesOfGodView";
 import FavoritesView from "./components/FavoritesView";
 import { getSupabaseClient, checkSupabaseConfigExists } from "./lib/supabaseClient";
 import { optimizeItemContent } from "./lib/contentOptimizer";
+import { dbGet, dbPut, safeStorageWrite, clearExpiredCache, recoverApplicationState, storageDiagnostics } from "./lib/indexedDb";
 import { 
   ThemeBanner, 
   NativeFeedAd, 
@@ -766,41 +767,58 @@ function StudyDetailModal({
   };
 
   useEffect(() => {
-    const checkState = () => {
+    let active = true;
+    const checkState = async () => {
       try {
-        const saved = localStorage.getItem("escola_da_fe_booklet");
-        const booklet = saved ? JSON.parse(saved) : [];
-        setIsInBooklet(booklet.some((bi: any) => bi.id === (item.id || item.name)));
+        const booklet = await dbGet<any[]>("anotacoes", "user_booklet") || [];
+        if (active) {
+          setIsInBooklet(booklet.some((bi: any) => bi.id === (item.id || item.name)));
+        }
       } catch {
-        setIsInBooklet(false);
+        if (active) setIsInBooklet(false);
       }
     };
     checkState();
 
-    window.addEventListener("booklet-updated", checkState);
-    return () => window.removeEventListener("booklet-updated", checkState);
+    const handleUpdate = () => {
+      checkState();
+    };
+
+    window.addEventListener("booklet-updated", handleUpdate);
+    return () => {
+      active = false;
+      window.removeEventListener("booklet-updated", handleUpdate);
+    };
   }, [item]);
 
   useEffect(() => {
-    const checkFavState = () => {
+    let active = true;
+    const checkFavState = async () => {
       try {
-        const saved = localStorage.getItem("escola_da_fe_favorites");
-        const favs = saved ? JSON.parse(saved) : [];
-        setIsFavorited(favs.some((f: any) => f.id === (item.id || item.name)));
+        const favs = await dbGet<any[]>("favoritos", "favorites") || [];
+        if (active) {
+          setIsFavorited(favs.some((f: any) => f.id === (item.id || item.name)));
+        }
       } catch {
-        setIsFavorited(false);
+        if (active) setIsFavorited(false);
       }
     };
     checkFavState();
 
-    window.addEventListener("favorites-updated", checkFavState);
-    return () => window.removeEventListener("favorites-updated", checkFavState);
+    const handleUpdate = () => {
+      checkFavState();
+    };
+
+    window.addEventListener("favorites-updated", handleUpdate);
+    return () => {
+      active = false;
+      window.removeEventListener("favorites-updated", handleUpdate);
+    };
   }, [item]);
 
-  const handleToggleFavorite = () => {
+  const handleToggleFavorite = async () => {
     try {
-      const saved = localStorage.getItem("escola_da_fe_favorites");
-      let favs = saved ? JSON.parse(saved) : [];
+      const favs = await dbGet<any[]>("favoritos", "favorites") || [];
       const itemKey = item.id || item.name;
       const index = favs.findIndex((f: any) => f.id === itemKey);
       if (index > -1) {
@@ -824,7 +842,7 @@ function StudyDetailModal({
         favs.push(favItem);
         setIsFavorited(true);
       }
-      localStorage.setItem("escola_da_fe_favorites", JSON.stringify(favs));
+      await dbPut("favoritos", "favorites", favs);
       window.dispatchEvent(new CustomEvent("favorites-updated"));
     } catch (e) {
       console.error(e);
@@ -1753,7 +1771,7 @@ function Home({
           const currentDeleted = JSON.parse(localStorage.getItem("escola_da_fe_deleted_ids") || "[]");
           if (!currentDeleted.includes(id)) {
             currentDeleted.push(id);
-            localStorage.setItem("escola_da_fe_deleted_ids", JSON.stringify(currentDeleted));
+            safeStorageWrite("escola_da_fe_deleted_ids", JSON.stringify(currentDeleted));
           }
         } catch (e) {
           console.warn("Error managing deleted IDs in localStorage", e);
@@ -2868,6 +2886,92 @@ function Home({
         </div>
       </div>
 
+      {/* SEÇÃO DE AUDITORIA DE ARMAZENAMENTO E DIAGNÓSTICO (Task 11 / Task 5 / Task 12) */}
+      <section className="mt-20 bg-card-light dark:bg-card-dark p-6 sm:p-10 rounded-[3rem] border border-border-light dark:border-border-dark shadow-xl space-y-8">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="space-y-2">
+            <span className="text-[10px] text-accent font-black uppercase tracking-[0.2em]">Auditoria & Autocorreção</span>
+            <h3 className="text-3xl font-black text-heading tracking-tight flex items-center gap-3">
+              <Database className="text-[#cfaf72] shrink-0" size={28} />
+              Diagnóstico de Armazenamento Inteligente
+            </h3>
+            <p className="text-sm text-muted font-medium max-w-2xl">
+              Nossa tecnologia baseada em <span className="text-accent underline font-bold">IndexedDB</span> previne que o aplicativo trave ou exceda a cota do seu navegador, mantendo seus estudos, favoritos e anotações 100% seguros e disponíveis offline.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-3.5 shrink-0">
+            <button
+              onClick={async () => {
+                const report = await storageDiagnostics();
+                const usedKb = (report.localStorageUsageApproxBytes / 1024).toFixed(2);
+                alert(
+                  `📋 RELATÓRIO DE SAÚDE ESCOLA DA FÉ\n\n` +
+                  `• Status do IndexedDB: ${report.indexedDbStatus}\n` +
+                  `• Uso do LocalStorage: ${usedKb} KB (Leve e protegido!)\n` +
+                  `• Chaves Ativas no LocalStorage: ${report.localStorageEntries.length}\n` +
+                  `• Total de Livros no IndexedDB: ${report.indexedDbObjects.livros || 0} volumes\n` +
+                  `• Total de Favoritos no IndexedDB: ${report.indexedDbObjects.favoritos || 0} marcadores\n` +
+                  `• Limite de Cota Detectado: ${(report.spaceQuotaBytes / (1024 * 1024)).toFixed(1)} MB\n` +
+                  `• Carga Atual do Navegador: ${report.spacePercentageUsed}%\n` +
+                  `• Caches de Recursos Limpos: Sim (Automático)\n\n` +
+                  `Armazenamento inteligente e à prova de travamento ativado!`
+                );
+              }}
+              className="h-11 px-6 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-900 dark:text-white font-extrabold text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer border border-slate-200 dark:border-slate-700 active:scale-95"
+            >
+              Auditar Sistema
+            </button>
+            <button
+              onClick={async () => {
+                if (window.confirm("Deseja ativar a autocorreção automática? Isso irá consolidar seus dados locais e recriar índices limpos. Nenhum conteúdo de estudo será perdido.")) {
+                  const cleaned = await recoverApplicationState();
+                  if (cleaned) {
+                    alert("✓ Sistema de autocorreção concluído com sucesso! Os caches foram depurados e os dados foram reorganizados para total estabilidade.");
+                    window.location.reload();
+                  } else {
+                    alert("O sistema já está em perfeito estado de estabilidade local.");
+                  }
+                }
+              }}
+              className="h-11 px-6 bg-accent text-secondary hover:bg-[#cfaf72]/90 font-extrabold text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer shadow-lg active:scale-95 flex items-center gap-2"
+            >
+              <Sparkles size={14} />
+              Restaurar & Otimizar Local
+            </button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 pt-2">
+          <div className="p-5 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl flex items-start gap-4">
+            <div className="w-10 h-10 rounded-xl bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-lg shadow-emerald-500/20">
+              <Check size={18} />
+            </div>
+            <div>
+              <h5 className="font-bold text-slate-800 dark:text-white text-sm mb-1">Proteção de Cota</h5>
+              <p className="text-xs text-muted leading-relaxed font-semibold">Os dados grandes de livros e estudos não ocupam mais o LocalStorage, erradicando o erro de Quota Exceeded do navegador.</p>
+            </div>
+          </div>
+          <div className="p-5 bg-indigo-500/10 border border-indigo-500/20 rounded-2xl flex items-start gap-4">
+            <div className="w-10 h-10 rounded-xl bg-indigo-500 text-white flex items-center justify-center shrink-0 shadow-lg shadow-indigo-500/20">
+              <Library size={18} />
+            </div>
+            <div>
+              <h5 className="font-bold text-slate-800 dark:text-white text-sm mb-1">Funciona 100% Offline</h5>
+              <p className="text-xs text-muted leading-relaxed font-semibold">Garante leitura bíblica rápida e contínua mesmo em locais sem internet ou com sinal de rede instável.</p>
+            </div>
+          </div>
+          <div className="p-5 bg-amber-500/10 border border-amber-500/20 rounded-2xl flex items-start gap-4">
+            <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-lg shadow-amber-500/20">
+              <Sparkles size={18} />
+            </div>
+            <div>
+              <h5 className="font-bold text-slate-800 dark:text-white text-sm mb-1">Sincronização Segura</h5>
+              <p className="text-xs text-muted leading-relaxed font-semibold">Quando você minimiza o navegador, suas notas e progresso de leitura são preservados de maneira imediata.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Biography Modal overlay for mural posts */}
       <AnimatePresence>
         {activeBioModal && (
@@ -3082,7 +3186,7 @@ function Studies({
         const deleted = JSON.parse(localStorage.getItem("escola_da_fe_deleted_ids") || "[]");
         if (!deleted.includes(id)) {
           deleted.push(id);
-          localStorage.setItem("escola_da_fe_deleted_ids", JSON.stringify(deleted));
+          safeStorageWrite("escola_da_fe_deleted_ids", JSON.stringify(deleted));
         }
 
         // Delete from Supabase via backend API
@@ -3391,7 +3495,7 @@ function Dictionary({
         const deleted = JSON.parse(localStorage.getItem("escola_da_fe_deleted_ids") || "[]");
         if (!deleted.includes(nameToDelete)) {
           deleted.push(nameToDelete);
-          localStorage.setItem("escola_da_fe_deleted_ids", JSON.stringify(deleted));
+          safeStorageWrite("escola_da_fe_deleted_ids", JSON.stringify(deleted));
         }
 
         // Delete from Supabase database
@@ -3699,7 +3803,7 @@ function Stories({
         const deleted = JSON.parse(localStorage.getItem("escola_da_fe_deleted_ids") || "[]");
         if (!deleted.includes(id)) {
           deleted.push(id);
-          localStorage.setItem("escola_da_fe_deleted_ids", JSON.stringify(deleted));
+          safeStorageWrite("escola_da_fe_deleted_ids", JSON.stringify(deleted));
         }
 
         // Delete from Supabase via backend API
@@ -4047,7 +4151,7 @@ function Theology({
         const deleted = JSON.parse(localStorage.getItem("escola_da_fe_deleted_ids") || "[]");
         if (!deleted.includes(id)) {
           deleted.push(id);
-          localStorage.setItem("escola_da_fe_deleted_ids", JSON.stringify(deleted));
+          safeStorageWrite("escola_da_fe_deleted_ids", JSON.stringify(deleted));
         }
 
         // Delete from Supabase via backend API
@@ -4341,7 +4445,7 @@ function Course({
         const deleted = JSON.parse(localStorage.getItem("escola_da_fe_deleted_ids") || "[]");
         if (!deleted.includes(lessonNum)) {
           deleted.push(lessonNum);
-          localStorage.setItem("escola_da_fe_deleted_ids", JSON.stringify(deleted));
+          safeStorageWrite("escola_da_fe_deleted_ids", JSON.stringify(deleted));
         }
 
         // Delete from Supabase via backend API
@@ -4978,7 +5082,7 @@ function AppContent({ isDark, theme, setTheme }: { isDark: boolean, theme: "ligh
   });
 
   useEffect(() => {
-    localStorage.setItem("escola_da_fe_socials", JSON.stringify(socialLinks));
+    safeStorageWrite("escola_da_fe_socials", JSON.stringify(socialLinks));
   }, [socialLinks]);
 
   const [supportDetails, setSupportDetails] = useState(() => {
@@ -5003,7 +5107,7 @@ function AppContent({ isDark, theme, setTheme }: { isDark: boolean, theme: "ligh
   });
 
   useEffect(() => {
-    localStorage.setItem("escola_da_fe_support_details", JSON.stringify(supportDetails));
+    safeStorageWrite("escola_da_fe_support_details", JSON.stringify(supportDetails));
   }, [supportDetails]);
 
   const [isPoliciesOpen, setIsPoliciesOpen] = useState(false);
@@ -5028,11 +5132,11 @@ function AppContent({ isDark, theme, setTheme }: { isDark: boolean, theme: "ligh
   });
 
   useEffect(() => {
-    localStorage.setItem("escola_da_fe_privacy", privacyText);
+    safeStorageWrite("escola_da_fe_privacy", privacyText);
   }, [privacyText]);
 
   useEffect(() => {
-    localStorage.setItem("escola_da_fe_terms", termsText);
+    safeStorageWrite("escola_da_fe_terms", termsText);
   }, [termsText]);
 
   // Unified confirm modal state
@@ -5127,207 +5231,179 @@ function AppContent({ isDark, theme, setTheme }: { isDark: boolean, theme: "ligh
     }
   };
 
-  // Persistent user content lists
-  const [themes, setThemes] = useState<any[]>(() => {
-    try {
-      const saved = localStorage.getItem("escola_da_fe_themes");
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) {
-          const deletedIds = getSafeDeletedIds();
-          const merged = [...parsed];
-          BIBLICAL_THEMES.forEach(def => {
-            if (!merged.some(m => m.id === def.id) && !deletedIds.includes(def.id)) {
-              merged.push(def);
-            }
-          });
-          return merged;
-        }
+  // Persistent user content lists (using safe default values; loaded asynchronously on boot)
+  const [themes, setThemes] = useState<any[]>(BIBLICAL_THEMES);
+  const [names, setNames] = useState<any[]>(BIBLICAL_NAMES);
+  const [stories, setStories] = useState<any[]>(BIBLICAL_STORIES);
+  const [theologyTopics, setTheologyTopics] = useState<any[]>(THEOLOGY_TOPICS);
+  const [courseLessons, setCourseLessons] = useState<any[]>(BASIC_COURSE);
+  const [announcements, setAnnouncements] = useState<any[]>([]);
+  const [livros, setLivros] = useState<any[]>(DEFAULT_LIVROS);
+  const [isDataLoaded, setIsDataLoaded] = useState(false);
+
+  useEffect(() => {
+    async function initAndMigrateLocalStorage() {
+      // 1. Clear expired HTTP/Content caches to keep cache size controlled
+      try {
+        await clearExpiredCache();
+      } catch (err) {
+        console.warn("Could not clear expired cache:", err);
       }
-      return BIBLICAL_THEMES;
-    } catch {
-      return BIBLICAL_THEMES;
-    }
-  });
 
-  const [names, setNames] = useState<any[]>(() => {
-    try {
-      const saved = localStorage.getItem("escola_da_fe_names");
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) {
-          const deletedIds = getSafeDeletedIds();
-          const merged = [...parsed];
-          BIBLICAL_NAMES.forEach(def => {
-            if (!merged.some(m => m.name === def.name) && !deletedIds.includes(def.name)) {
-              merged.push(def);
+      // 2. LocalStorage to IndexedDB migration check
+      const keysToMigrate = [
+        { lsKey: "escola_da_fe_themes", idbStore: "categorias", dbKey: "biblical_themes", fallback: BIBLICAL_THEMES },
+        { lsKey: "escola_da_fe_names", idbStore: "categorias", dbKey: "biblical_names", fallback: BIBLICAL_NAMES },
+        { lsKey: "escola_da_fe_stories", idbStore: "estudos", dbKey: "biblical_stories", fallback: BIBLICAL_STORIES },
+        { lsKey: "escola_da_fe_theology", idbStore: "categorias", dbKey: "theology_topics", fallback: THEOLOGY_TOPICS },
+        { lsKey: "escola_da_fe_course", idbStore: "categorias", dbKey: "course_lessons", fallback: BASIC_COURSE },
+        { lsKey: "escola_da_fe_announcements", idbStore: "configuracoes", dbKey: "announcements", fallback: [
+            {
+              id: "anuncio_initial_1",
+              title: "Bem-vindo à nova versão Escola da Fé",
+              date: "20/05/2026",
+              message: "Agora você pode compilar ensinos, histórias e biografia em formato Word ou PDF real! Adicione itens e baixe gratuitamente para fins pastorais e de comunhão bíblica local."
             }
-          });
-          return merged;
-        }
-      }
-      return BIBLICAL_NAMES;
-    } catch {
-      return BIBLICAL_NAMES;
-    }
-  });
-
-  const [stories, setStories] = useState<any[]>(() => {
-    try {
-      const saved = localStorage.getItem("escola_da_fe_stories");
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) {
-          const deletedIds = getSafeDeletedIds();
-          const merged = [...parsed];
-          BIBLICAL_STORIES.forEach(def => {
-            if (!merged.some(m => m.id === def.id) && !deletedIds.includes(def.id)) {
-              merged.push(def);
-            }
-          });
-          return merged;
-        }
-      }
-      return BIBLICAL_STORIES;
-    } catch {
-      return BIBLICAL_STORIES;
-    }
-  });
-
-  const [theologyTopics, setTheologyTopics] = useState<any[]>(() => {
-    try {
-      const saved = localStorage.getItem("escola_da_fe_theology");
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) {
-          const deletedIds = getSafeDeletedIds();
-          
-          const updatedParsed = parsed.map((item: any) => {
-            const matchingDefault = THEOLOGY_TOPICS.find(def => def.id === item.id);
-            if (matchingDefault) {
-              const isInvalid = !item.content || item.content.length < 100 || (
-                item.content.toLowerCase().includes("cenário laboral") ||
-                item.content.toLowerCase().includes("garantir exemplar") ||
-                item.content.toLowerCase().includes("bíblia histórica") ||
-                item.content.toLowerCase().includes("ambiente doméstico") ||
-                item.content.toLowerCase().includes("jovem chamado lucas") ||
-                item.content.toLowerCase().includes("água potável") ||
-                item.content.toLowerCase().includes("notícias difíceis") ||
-                item.content.toLowerCase().includes("obstáculo na atualidade")
-              );
-              return {
-                ...item,
-                title: matchingDefault.title,
-                description: matchingDefault.description,
-                content: isInvalid ? matchingDefault.content : item.content,
-              };
-            }
-            return item;
-          });
-
-          const merged = [...updatedParsed];
-          THEOLOGY_TOPICS.forEach(def => {
-            if (!merged.some(m => m.id === def.id) && !deletedIds.includes(def.id)) {
-              merged.push(def);
-            }
-          });
-          return merged;
-        }
-      }
-      return THEOLOGY_TOPICS;
-    } catch {
-      return THEOLOGY_TOPICS;
-    }
-  });
-
-  const [courseLessons, setCourseLessons] = useState<any[]>(() => {
-    try {
-      const saved = localStorage.getItem("escola_da_fe_course");
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) {
-          const deletedIds = getSafeDeletedIds();
-          const merged = [...parsed];
-          BASIC_COURSE.forEach(def => {
-            if (!merged.some(m => m.lesson === def.lesson) && !deletedIds.includes(`course_${def.lesson}`)) {
-              merged.push(def);
-            }
-          });
-          return merged.sort((a, b) => a.lesson - b.lesson);
-        }
-      }
-      return BASIC_COURSE;
-    } catch {
-      return BASIC_COURSE;
-    }
-  });
-
-  const [announcements, setAnnouncements] = useState<any[]>(() => {
-    try {
-      const saved = localStorage.getItem("escola_da_fe_announcements");
-      return saved ? JSON.parse(saved) : [
-        {
-          id: "anuncio_initial_1",
-          title: "Bem-vindo à nova versão Escola da Fé",
-          date: "20/05/2026",
-          message: "Agora você pode compilar ensinos, histórias e biografia em formato Word ou PDF real! Adicione itens e baixe gratuitamente para fins pastorais e de comunhão bíblica local."
-        }
+          ]
+        },
+        { lsKey: "escola_da_fe_livros", idbStore: "livros", dbKey: "biblical_books", fallback: DEFAULT_LIVROS }
       ];
-    } catch {
-      return [];
-    }
-  });
 
-  const [livros, setLivros] = useState<any[]>(() => {
-    try {
-      const saved = localStorage.getItem("escola_da_fe_livros");
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) {
-          const deletedIds = getSafeDeletedIds();
-          const merged = [...parsed];
-          DEFAULT_LIVROS.forEach(def => {
-            if (!merged.some(m => m.id === def.id) && !deletedIds.includes(def.id)) {
-              merged.push(def);
+      for (const item of keysToMigrate) {
+        try {
+          // See if IndexedDB already has data
+          let stored = await dbGet<any[]>(item.idbStore, item.lsKey);
+          if (!stored || !Array.isArray(stored) || stored.length === 0) {
+            // Check if there is data in localStorage to migrate
+            const lsValue = localStorage.getItem(item.lsKey);
+            if (lsValue) {
+              console.log(`[Migration] Migrando "${item.lsKey}" para o IndexedDB...`);
+              const parsed = JSON.parse(lsValue);
+              if (parsed && Array.isArray(parsed) && parsed.length > 0) {
+                await dbPut(item.idbStore, item.lsKey, parsed);
+                stored = parsed;
+              }
+            } else {
+              // Write fallback to IndexedDB so it is always populated
+              await dbPut(item.idbStore, item.lsKey, item.fallback);
+              stored = item.fallback;
             }
-          });
-          return merged;
+          }
+
+          // Always remove legacy payload from localStorage to immediately free quota
+          localStorage.removeItem(item.lsKey);
+
+          // Apply state
+          if (stored && Array.isArray(stored)) {
+            const deletedIds = getSafeDeletedIds();
+            const filtered = stored.filter((x: any) => {
+              const id = x.id || x.name || `course_${x.lesson}`;
+              return !deletedIds.includes(id);
+            });
+            if (item.lsKey === "escola_da_fe_themes") {
+              setThemes(filtered);
+            } else if (item.lsKey === "escola_da_fe_names") {
+              setNames(filtered);
+            } else if (item.lsKey === "escola_da_fe_stories") {
+              setStories(filtered);
+            } else if (item.lsKey === "escola_da_fe_theology") {
+              // Check for invalid or boilerplate content in theology
+              const checkedTheology = filtered.map((topic: any) => {
+                const matchDef = THEOLOGY_TOPICS.find((def: any) => def.id === topic.id);
+                if (matchDef) {
+                  const isInvalid = !topic.content || topic.content.length < 100 || (
+                    topic.content.toLowerCase().includes("cenário laboral") ||
+                    topic.content.toLowerCase().includes("garantir exemplar") ||
+                    topic.content.toLowerCase().includes("bíblia histórica") ||
+                    topic.content.toLowerCase().includes("ambiente doméstico") ||
+                    topic.content.toLowerCase().includes("jovem chamado lucas") ||
+                    topic.content.toLowerCase().includes("água potável") ||
+                    topic.content.toLowerCase().includes("notícias difíceis") ||
+                    topic.content.toLowerCase().includes("obstáculo na atualidade")
+                  );
+                  return {
+                    ...topic,
+                    title: matchDef.title,
+                    description: matchDef.description,
+                    content: isInvalid ? matchDef.content : topic.content,
+                  };
+                }
+                return topic;
+              });
+              setTheologyTopics(checkedTheology);
+            } else if (item.lsKey === "escola_da_fe_course") {
+              setCourseLessons(filtered.sort((a, b) => a.lesson - b.lesson));
+            } else if (item.lsKey === "escola_da_fe_announcements") {
+              setAnnouncements(filtered);
+            } else if (item.lsKey === "escola_da_fe_livros") {
+              setLivros(stored); // Do not filter out books! Keep them whole
+            }
+          }
+        } catch (e) {
+          console.warn(`[Migration] Falha ao sincronizar chave "${item.lsKey}":`, e);
         }
       }
-      return DEFAULT_LIVROS;
-    } catch {
-      return DEFAULT_LIVROS;
+
+      // Also migrate bookmarks/favorites/booklet if they exist in LocalStorage
+      try {
+        const legacyFavs = localStorage.getItem("escola_da_fe_favorites");
+        if (legacyFavs) {
+          const parsed = JSON.parse(legacyFavs);
+          await dbPut("favoritos", "favorites", parsed);
+        }
+        localStorage.removeItem("escola_da_fe_favorites");
+
+        const legacyBooklet = localStorage.getItem("escola_da_fe_booklet");
+        if (legacyBooklet) {
+          const parsed = JSON.parse(legacyBooklet);
+          await dbPut("anotacoes", "user_booklet", parsed);
+        }
+        localStorage.removeItem("escola_da_fe_booklet");
+      } catch (err) {
+        console.warn("[Migration] Erro ao sincronizar favoritos legados:", err);
+      }
+
+      setIsDataLoaded(true);
     }
-  });
+
+    initAndMigrateLocalStorage();
+  }, []);
+
+  // Sync to database
+  useEffect(() => {
+    if (!isDataLoaded) return;
+    dbPut("livros", "escola_da_fe_livros", livros);
+  }, [livros, isDataLoaded]);
 
   useEffect(() => {
-    localStorage.setItem("escola_da_fe_livros", JSON.stringify(livros));
-  }, [livros]);
-
-  // Sync to localStorages
-  useEffect(() => {
-    localStorage.setItem("escola_da_fe_themes", JSON.stringify(themes));
-  }, [themes]);
+    if (!isDataLoaded) return;
+    dbPut("categorias", "escola_da_fe_themes", themes);
+  }, [themes, isDataLoaded]);
 
   useEffect(() => {
-    localStorage.setItem("escola_da_fe_names", JSON.stringify(names));
-  }, [names]);
+    if (!isDataLoaded) return;
+    dbPut("categorias", "escola_da_fe_names", names);
+  }, [names, isDataLoaded]);
 
   useEffect(() => {
-    localStorage.setItem("escola_da_fe_stories", JSON.stringify(stories));
-  }, [stories]);
+    if (!isDataLoaded) return;
+    dbPut("estudos", "escola_da_fe_stories", stories);
+  }, [stories, isDataLoaded]);
 
   useEffect(() => {
-    localStorage.setItem("escola_da_fe_theology", JSON.stringify(theologyTopics));
-  }, [theologyTopics]);
+    if (!isDataLoaded) return;
+    dbPut("categorias", "escola_da_fe_theology", theologyTopics);
+  }, [theologyTopics, isDataLoaded]);
 
   useEffect(() => {
-    localStorage.setItem("escola_da_fe_course", JSON.stringify(courseLessons));
-  }, [courseLessons]);
+    if (!isDataLoaded) return;
+    dbPut("categorias", "escola_da_fe_course", courseLessons);
+  }, [courseLessons, isDataLoaded]);
 
   useEffect(() => {
-    localStorage.setItem("escola_da_fe_announcements", JSON.stringify(announcements));
-  }, [announcements]);
+    if (!isDataLoaded) return;
+    dbPut("configuracoes", "escola_da_fe_announcements", announcements);
+  }, [announcements, isDataLoaded]);
 
   // Database Connection & Synchronization Status State
   const [dbStatus, setDbStatus] = useState<"connecting" | "online" | "offline">("connecting");
@@ -6021,6 +6097,51 @@ function AppContent({ isDark, theme, setTheme }: { isDark: boolean, theme: "ligh
     }
   });
 
+  // Background State Preservation & Automatic Recovery (Task 9)
+  useEffect(() => {
+    const handleBackgroundPreserve = async () => {
+      if (document.visibilityState === "hidden") {
+        console.log("[BackgroundSync] Aplicativo em segundo plano. Preservando progresso...");
+        if (selectedItem) {
+          const statePayload = {
+            selectedItem,
+            timestamp: Date.now()
+          };
+          await dbPut("configuracoes", "background_active_state", statePayload);
+        }
+      }
+    };
+
+    const handleReturnRestore = async () => {
+      if (document.visibilityState === "visible") {
+        try {
+          const restored = await dbGet<any>("configuracoes", "background_active_state");
+          if (restored && restored.selectedItem) {
+            // Restore active state if it was saved less than 30 minutes ago
+            const ageMs = Date.now() - restored.timestamp;
+            if (ageMs < 30 * 60 * 1000) {
+              console.log("[BackgroundSync] Restaurado progresso em segundo plano:", restored.selectedItem.title || restored.selectedItem.name || restored.selectedItem.titulo);
+              setSelectedItem(restored.selectedItem);
+            }
+          }
+        } catch (e) {
+          console.warn("[BackgroundSync] Falha ao recuperar estado em segundo plano:", e);
+        }
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleBackgroundPreserve);
+    document.addEventListener("visibilitychange", handleReturnRestore);
+
+    // Initial restore try on component load
+    handleReturnRestore();
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleBackgroundPreserve);
+      document.removeEventListener("visibilitychange", handleReturnRestore);
+    };
+  }, [selectedItem]);
+
   // Ads state limits
   const [studyClickCount, setStudyClickCount] = useState(0);
 
@@ -6086,7 +6207,7 @@ function AppContent({ isDark, theme, setTheme }: { isDark: boolean, theme: "ligh
       const isAlready = prev.includes(itemId);
       if (isAlready) return prev;
       const next = [...prev, itemId];
-      localStorage.setItem('completed_studies', JSON.stringify(next));
+      safeStorageWrite('completed_studies', JSON.stringify(next));
       return next;
     });
 

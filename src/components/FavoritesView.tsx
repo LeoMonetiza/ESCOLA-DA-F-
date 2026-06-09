@@ -17,6 +17,8 @@ import {
 } from "lucide-react";
 import { cn } from "../lib/utils";
 
+import { dbGet, dbPut } from "../lib/indexedDb";
+
 interface FavoriteItem {
   id: string;
   title: string;
@@ -34,10 +36,10 @@ export default function FavoritesView({ onSelectItem }: FavoritesViewProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState<"all" | FavoriteItem["type"]>("all");
 
-  const loadFavorites = () => {
+  const loadFavorites = async () => {
     try {
-      const saved = localStorage.getItem("escola_da_fe_favorites");
-      setFavorites(saved ? JSON.parse(saved) : []);
+      const saved = await dbGet<FavoriteItem[]>("favoritos", "favorites");
+      setFavorites(saved || []);
     } catch (e) {
       console.error("Erro ao carregar favoritos:", e);
       setFavorites([]);
@@ -53,13 +55,13 @@ export default function FavoritesView({ onSelectItem }: FavoritesViewProps) {
     };
   }, []);
 
-  const handleRemoveFavorite = (id: string, e: React.MouseEvent) => {
+  const handleRemoveFavorite = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     try {
-      const saved = localStorage.getItem("escola_da_fe_favorites");
-      const current = saved ? JSON.parse(saved) : [];
+      const saved = await dbGet<FavoriteItem[]>("favoritos", "favorites");
+      const current = saved || [];
       const updated = current.filter((f: any) => f.id !== id);
-      localStorage.setItem("escola_da_fe_favorites", JSON.stringify(updated));
+      await dbPut("favoritos", "favorites", updated);
       setFavorites(updated);
       window.dispatchEvent(new CustomEvent("favorites-updated"));
     } catch (err) {
@@ -67,10 +69,10 @@ export default function FavoritesView({ onSelectItem }: FavoritesViewProps) {
     }
   };
 
-  const handleClearAll = () => {
+  const handleClearAll = async () => {
     if (window.confirm("Deseja realmente limpar toda a sua lista de favoritos?")) {
       try {
-        localStorage.setItem("escola_da_fe_favorites", JSON.stringify([]));
+        await dbPut("favoritos", "favorites", []);
         setFavorites([]);
         window.dispatchEvent(new CustomEvent("favorites-updated"));
       } catch (err) {
