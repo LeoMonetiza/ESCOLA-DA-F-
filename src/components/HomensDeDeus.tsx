@@ -46,6 +46,15 @@ function tryFormatDateTimeLocal(dateStr: string | undefined | null): string {
   }
 }
 
+// Safe array helper to prevent any type of array method crashes on mobile devices or PWAs
+function safeArray<T>(valor: any, label: string): T[] {
+  if (Array.isArray(valor)) {
+    return valor as T[];
+  }
+  console.warn(`[HomensDeDeus - Fallback de Proteção] Variável "${label}" inválida:`, valor, "Tipo:", typeof valor);
+  return [] as T[];
+}
+
 function safeGetTime(dateStr: string | undefined | null): number {
   try {
     if (!dateStr) return 0;
@@ -147,18 +156,23 @@ export default function HomensDeDeusView({
   isAdmin?: boolean;
   triggerConfirm?: (title: string, message: string, onConfirm: () => void) => void;
 }) {
+  const [renderError, setRenderError] = useState<string | null>(null);
+
   const [items, setItems] = useState<HomemDeDeus[]>(() => {
     try {
       const saved = localStorage.getItem("escola_mural_homens");
-      return saved ? JSON.parse(saved) : [];
-    } catch {
+      const parsed = saved ? JSON.parse(saved) : [];
+      return safeArray<HomemDeDeus>(parsed, "useState_items");
+    } catch (e) {
+      console.warn("[HomensDeDeus] Erro recuperando itens de localStorage:", e);
       return [];
     }
   });
   const [isLoading, setIsLoading] = useState(() => {
     try {
       const saved = localStorage.getItem("escola_mural_homens");
-      return saved ? JSON.parse(saved).length === 0 : true;
+      const parsed = saved ? JSON.parse(saved) : [];
+      return safeArray<HomemDeDeus>(parsed, "useState_isLoading").length === 0;
     } catch {
       return true;
     }
@@ -187,7 +201,8 @@ export default function HomensDeDeusView({
   const [hiddenIds, setHiddenIds] = useState<string[]>(() => {
     try {
       const saved = localStorage.getItem("escola_da_fe_hidden_men_ids");
-      return saved ? JSON.parse(saved) : [];
+      const parsed = saved ? JSON.parse(saved) : [];
+      return safeArray<string>(parsed, "useState_hiddenIds");
     } catch {
       return [];
     }
@@ -205,7 +220,8 @@ export default function HomensDeDeusView({
   const [comments, setComments] = useState<any[]>(() => {
     try {
       const saved = localStorage.getItem("escola_mural_comments");
-      return saved ? JSON.parse(saved) : [];
+      const parsed = saved ? JSON.parse(saved) : [];
+      return safeArray<any>(parsed, "useState_comments");
     } catch {
       return [];
     }
@@ -213,7 +229,8 @@ export default function HomensDeDeusView({
   const [reactions, setReactions] = useState<any[]>(() => {
     try {
       const saved = localStorage.getItem("escola_mural_reactions");
-      return saved ? JSON.parse(saved) : [];
+      const parsed = saved ? JSON.parse(saved) : [];
+      return safeArray<any>(parsed, "useState_reactions");
     } catch {
       return [];
     }
@@ -227,15 +244,15 @@ export default function HomensDeDeusView({
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   useEffect(() => {
-    localStorage.setItem("escola_mural_homens", JSON.stringify(items));
+    localStorage.setItem("escola_mural_homens", JSON.stringify(safeArray(items, "useEffect_items")));
   }, [items]);
 
   useEffect(() => {
-    localStorage.setItem("escola_mural_comments", JSON.stringify(comments));
+    localStorage.setItem("escola_mural_comments", JSON.stringify(safeArray(comments, "useEffect_comments")));
   }, [comments]);
 
   useEffect(() => {
-    localStorage.setItem("escola_mural_reactions", JSON.stringify(reactions));
+    localStorage.setItem("escola_mural_reactions", JSON.stringify(safeArray(reactions, "useEffect_reactions")));
   }, [reactions]);
 
   const showToast = (text: string, type: "success" | "error" = "success") => {
@@ -245,21 +262,21 @@ export default function HomensDeDeusView({
 
   // Helper functions for commentary and reactions
   const getCommentsCount = (manId: string) => {
-    return comments.filter((c) => c.post_id === manId).length;
+    return safeArray<any>(comments, "getCommentsCount").filter((c) => c && c.post_id === manId).length;
   };
 
   const getBiographyComments = (manId: string) => {
-    return comments
-      .filter((c) => c.post_id === manId)
-      .sort((a, b) => safeGetTime(a.created_at) - safeGetTime(b.created_at));
+    return safeArray<any>(comments, "getBiographyComments")
+      .filter((c) => c && c.post_id === manId)
+      .sort((a, b) => safeGetTime(a?.created_at) - safeGetTime(b?.created_at));
   };
 
   const getReactionsCount = (manId: string, type: string) => {
-    return reactions.filter((r) => r.post_id === manId && r.type === type).length;
+    return safeArray<any>(reactions, "reactions").filter((r) => r && r.post_id === manId && r.type === type).length;
   };
 
   const getMyReaction = (manId: string) => {
-    return reactions.find((r) => r.post_id === manId && r.device_id === deviceId)?.type;
+    return safeArray<any>(reactions, "reactions").find((r) => r && r.post_id === manId && r.device_id === deviceId)?.type;
   };
 
   const isCommentOwner = (com: any) => {
@@ -268,24 +285,26 @@ export default function HomensDeDeusView({
     if (com.device_id === deviceId) return true;
     try {
       const myIds = JSON.parse(localStorage.getItem("escola_mural_my_comment_ids") || "[]");
-      return myIds.includes(com.id);
+      const safeIds = safeArray<string>(myIds, "escola_mural_my_comment_ids");
+      return safeIds.includes(com.id);
     } catch {
       return false;
     }
   };
 
   const handleToggleReaction = async (manId: string, reactionType: string) => {
-    const existingReaction = reactions.find(
-      (r) => r.post_id === manId && r.device_id === deviceId
+    const listRe = safeArray<any>(reactions, "reactions");
+    const existingReaction = listRe.find(
+      (r) => r && r.post_id === manId && r.device_id === deviceId
     );
 
-    let updatedReactions: any[] = [...reactions];
+    let updatedReactions: any[] = [...listRe];
     const newId = "react_" + manId + "_" + deviceId;
 
     if (existingReaction) {
       if (existingReaction.type === reactionType) {
         // Toggle off
-        updatedReactions = updatedReactions.filter((r) => r.id !== existingReaction.id);
+        updatedReactions = updatedReactions.filter((r) => r && r.id !== existingReaction.id);
         setReactions(updatedReactions);
         localStorage.setItem("escola_mural_reactions", JSON.stringify(updatedReactions));
 
@@ -297,7 +316,7 @@ export default function HomensDeDeusView({
       } else {
         // Change reaction type
         updatedReactions = updatedReactions.map((r) => {
-          if (r.id === existingReaction.id) {
+          if (r && r.id === existingReaction.id) {
             return { ...r, type: reactionType };
           }
           return r;
@@ -369,13 +388,15 @@ export default function HomensDeDeusView({
       created_at: new Date().toISOString()
     };
 
-    const updatedComments = [...comments, newCommentObj];
+    const listCom = safeArray<any>(comments, "comments");
+    const updatedComments = [...listCom, newCommentObj];
     setComments(updatedComments);
     localStorage.setItem("escola_mural_comments", JSON.stringify(updatedComments));
     try {
       const myIds = JSON.parse(localStorage.getItem("escola_mural_my_comment_ids") || "[]");
-      myIds.push(newCommentId);
-      localStorage.setItem("escola_mural_my_comment_ids", JSON.stringify(myIds));
+      const safeIds = safeArray<string>(myIds, "escola_mural_my_comment_ids");
+      safeIds.push(newCommentId);
+      localStorage.setItem("escola_mural_my_comment_ids", JSON.stringify(safeIds));
     } catch (err) {
       console.warn(err);
     }
@@ -409,7 +430,7 @@ export default function HomensDeDeusView({
       "Confirmar Exclusão de Comentário",
       "Deseja realmente apagar permanentemente este comentário?",
       async () => {
-        const remaining = comments.filter(c => c.id !== commentId);
+        const remaining = safeArray<any>(comments, "comments").filter(c => c && c.id !== commentId);
         setComments(remaining);
         localStorage.setItem("escola_mural_comments", JSON.stringify(remaining));
 
@@ -426,8 +447,9 @@ export default function HomensDeDeusView({
   const handleUpdateComment = async (commentId: string, updatedText: string) => {
     if (!updatedText.trim()) return;
 
-    const updatedComments = comments.map(c => 
-      c.id === commentId ? { ...c, comment: updatedText.trim() } : c
+    const listCom = safeArray<any>(comments, "comments");
+    const updatedComments = listCom.map(c => 
+      c && c.id === commentId ? { ...c, comment: updatedText.trim() } : c
     );
     setComments(updatedComments);
     localStorage.setItem("escola_mural_comments", JSON.stringify(updatedComments));
@@ -436,7 +458,7 @@ export default function HomensDeDeusView({
     setEditingCommentText("");
     showToast("Comentário atualizado!");
 
-    const targetComment = updatedComments.find(c => c.id === commentId);
+    const targetComment = updatedComments.find(c => c && c.id === commentId);
     if (targetComment) {
       try {
         await fetch("/api/db/comments/add", {
@@ -455,14 +477,17 @@ export default function HomensDeDeusView({
       "Confirmar Remoção de Reações",
       "Deseja realmente remover todas as reações desta biografia?",
       async () => {
-        const reactionsToRemove = reactions.filter(r => r.post_id === manId);
-        const remaining = reactions.filter(r => r.post_id !== manId);
+        const listRe = safeArray<any>(reactions, "reactions");
+        const reactionsToRemove = listRe.filter(r => r && r.post_id === manId);
+        const remaining = listRe.filter(r => r && r.post_id !== manId);
         setReactions(remaining);
         localStorage.setItem("escola_mural_reactions", JSON.stringify(remaining));
 
         try {
           for (const r of reactionsToRemove) {
-            await fetch(`/api/db/reactions/${r.id}`, { method: "DELETE" });
+            if (r) {
+              await fetch(`/api/db/reactions/${r.id}`, { method: "DELETE" });
+            }
           }
           showToast("Reações limpas!");
         } catch (e) {
@@ -475,14 +500,16 @@ export default function HomensDeDeusView({
   const handleToggleHide = async (id: string) => {
     let nextHidden: string[] = [];
     setHiddenIds(prev => {
-      const next = prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id];
+      const listPrev = safeArray<string>(prev, "hiddenIds_prev");
+      const next = listPrev.includes(id) ? listPrev.filter(x => x !== id) : [...listPrev, id];
       nextHidden = next;
       localStorage.setItem("escola_da_fe_hidden_men_ids", JSON.stringify(next));
       return next;
     });
 
     // Check pre-update status to show exact prompt
-    const wasHidden = hiddenIds.includes(id);
+    const listHiddenCurrent = safeArray<string>(hiddenIds, "hiddenIds");
+    const wasHidden = listHiddenCurrent.includes(id);
     showToast(wasHidden ? "Biografia agora está visível para todos!" : "Biografia ocultada de alunos!");
 
     try {
@@ -561,15 +588,15 @@ export default function HomensDeDeusView({
             const res = await fetch("/api/db/load");
             const result = await res.json();
             if (result.success && result.data && isMounted) {
-              const fetchedComments = result.data.comments || [];
-              const fetchedReactions = result.data.reactions || [];
+              const fetchedComments = safeArray<any>(result.data.comments, "result.data.comments");
+              const fetchedReactions = safeArray<any>(result.data.reactions, "result.data.reactions");
               setComments(fetchedComments);
               setReactions(fetchedReactions);
               localStorage.setItem("escola_mural_comments", JSON.stringify(fetchedComments));
               localStorage.setItem("escola_mural_reactions", JSON.stringify(fetchedReactions));
 
-              const fetchedConfig = result.data.configuracoes || [];
-              const hiddenConf = fetchedConfig.find((c: any) => c.chave === "hidden_men_ids");
+              const fetchedConfig = safeArray<any>(result.data.configuracoes, "result.data.configuracoes");
+              const hiddenConf = fetchedConfig.find((c: any) => c && c.chave === "hidden_men_ids");
               if (hiddenConf) {
                 try {
                   const remoteHidden = JSON.parse(hiddenConf.valor);
@@ -582,26 +609,31 @@ export default function HomensDeDeusView({
                 }
               }
 
-              const fetchedHomens = result.data.homens || [];
+              const fetchedHomens = safeArray<any>(result.data.homens, "result.data.homens");
               if (fetchedHomens.length > 0) {
                 const mapped: HomemDeDeus[] = fetchedHomens
-                  .map((row: any) => ({
-                    id: row.id,
-                    name: row.nome || "",
-                    story: row.descricao || "",
-                    photoUrl: row.imagem || "",
-                    era: row.era || "Contemporâneo",
-                    birthAndDeath: row.birth_and_death || "Biografia viva",
-                    mainLegacy: row.main_legacy || "Servo de Deus",
-                    bibleVerse: row.bible_verse || ""
-                  }))
-                  .filter((it: HomemDeDeus) => !isMockedItem(it));
+                  .map((row: any) => {
+                    if (!row) return null;
+                    return {
+                      id: row.id,
+                      name: row.nome || "",
+                      story: row.descricao || "",
+                      photoUrl: row.imagem || "",
+                      era: row.era || "Contemporâneo",
+                      birthAndDeath: row.birth_and_death || "Biografia viva",
+                      mainLegacy: row.main_legacy || "Servo de Deus",
+                      bibleVerse: row.bible_verse || ""
+                    };
+                  })
+                  .filter((it: any) => it && !isMockedItem(it));
                 setItems(mapped);
 
-                const presentMocked = fetchedHomens.filter((row: any) => isMockedItem({ id: row.id, name: row.nome || "" } as any));
+                const presentMocked = fetchedHomens.filter((row: any) => row && isMockedItem({ id: row.id, name: row.nome || "" } as any));
                 if (presentMocked.length > 0) {
                   for (const item of presentMocked) {
-                    fetch(`/api/db/homens/${item.id}`, { method: "DELETE" }).catch(() => {});
+                    if (item) {
+                      fetch(`/api/db/homens/${item.id}`, { method: "DELETE" }).catch(() => {});
+                    }
                   }
                 }
               }
@@ -624,16 +656,18 @@ export default function HomensDeDeusView({
           .from("comments")
           .select("*");
         if (commentsData && isMounted) {
-          setComments(commentsData);
-          localStorage.setItem("escola_mural_comments", JSON.stringify(commentsData));
+          const safeCom = safeArray<any>(commentsData, "commentsData");
+          setComments(safeCom);
+          localStorage.setItem("escola_mural_comments", JSON.stringify(safeCom));
         }
 
         const { data: reactionsData } = await supabase
           .from("reactions")
           .select("*");
         if (reactionsData && isMounted) {
-          setReactions(reactionsData);
-          localStorage.setItem("escola_mural_reactions", JSON.stringify(reactionsData));
+          const safeReact = safeArray<any>(reactionsData, "reactionsData");
+          setReactions(safeReact);
+          localStorage.setItem("escola_mural_reactions", JSON.stringify(safeReact));
         }
 
         const { data: configData } = await supabase
@@ -657,27 +691,33 @@ export default function HomensDeDeusView({
         if (error) {
           console.error("Erro ao buscar dados do Supabase:", error);
         } else if (data && data.length > 0) {
-          const mapped: HomemDeDeus[] = data
-            .map((row: any) => ({
-              id: row.id,
-              name: row.nome || "",
-              story: row.descricao || "",
-              photoUrl: row.imagem || "",
-              era: row.era || "Contemporâneo",
-              birthAndDeath: row.birth_and_death || "Biografia viva",
-              mainLegacy: row.main_legacy || "Servo de Deus",
-              bibleVerse: row.bible_verse || ""
-            }))
-            .filter((it: HomemDeDeus) => !isMockedItem(it));
+          const safeData = safeArray<any>(data, "supabase_homens_de_deus");
+          const mapped: HomemDeDeus[] = safeData
+            .map((row: any) => {
+              if (!row) return null;
+              return {
+                id: row.id,
+                name: row.nome || "",
+                story: row.descricao || "",
+                photoUrl: row.imagem || "",
+                era: row.era || "Contemporâneo",
+                birthAndDeath: row.birth_and_death || "Biografia viva",
+                mainLegacy: row.main_legacy || "Servo de Deus",
+                bibleVerse: row.bible_verse || ""
+              };
+            })
+            .filter((it: any) => it && !isMockedItem(it));
           setItems(mapped);
 
-          const presentMocked = data.filter((row: any) => isMockedItem({ id: row.id, name: row.nome || "" } as any));
+          const presentMocked = safeData.filter((row: any) => row && isMockedItem({ id: row.id, name: row.nome || "" } as any));
           if (presentMocked.length > 0) {
             for (const item of presentMocked) {
-              supabase.from("homens_de_deus").delete().eq("id", item.id).then(({ error: delErr }) => {
-                if (!delErr) console.log(`Removido com sucesso do banco de dados remoto: ${item.id}`);
-              });
-              fetch(`/api/db/homens/${item.id}`, { method: "DELETE" }).catch(() => {});
+              if (item) {
+                supabase.from("homens_de_deus").delete().eq("id", item.id).then(({ error: delErr }) => {
+                  if (!delErr) console.log(`Removido com sucesso do banco de dados remoto: ${item.id}`);
+                });
+                fetch(`/api/db/homens/${item.id}`, { method: "DELETE" }).catch(() => {});
+              }
             }
           }
         }
@@ -717,8 +757,9 @@ export default function HomensDeDeusView({
                 };
                 if (!isMockedItem(newItem)) {
                   setItems((prev) => {
-                    if (prev.some((it) => it.id === newItem.id)) return prev;
-                    return [newItem, ...prev];
+                    const listPrev = safeArray<HomemDeDeus>(prev, "realtime_insert_items");
+                    if (listPrev.some((it) => it && it.id === newItem.id)) return listPrev;
+                    return [newItem, ...listPrev];
                   });
                 }
               } else if (eventType === "UPDATE") {
@@ -734,11 +775,11 @@ export default function HomensDeDeusView({
                   bibleVerse: row.bible_verse || ""
                 };
                 if (isMockedItem(updatedItem)) {
-                  setItems((prev) => prev.filter((it) => it.id !== updatedItem.id));
+                  setItems((prev) => safeArray<HomemDeDeus>(prev, "realtime_update_mock_items").filter((it) => it && it.id !== updatedItem.id));
                   setSelectedMan((curr) => curr && curr.id === updatedItem.id ? null : curr);
                 } else {
                   setItems((prev) =>
-                    prev.map((it) => (it.id === updatedItem.id ? updatedItem : it))
+                    safeArray<HomemDeDeus>(prev, "realtime_update_items").map((it) => (it && it.id === updatedItem.id ? updatedItem : it))
                   );
                   setSelectedMan((curr) =>
                     curr && curr.id === updatedItem.id ? updatedItem : curr
@@ -746,7 +787,7 @@ export default function HomensDeDeusView({
                 }
               } else if (eventType === "DELETE") {
                 const oldId = payload.old.id;
-                setItems((prev) => prev.filter((it) => it.id !== oldId));
+                setItems((prev) => safeArray<HomemDeDeus>(prev, "realtime_delete_items").filter((it) => it && it.id !== oldId));
                 setSelectedMan((curr) => (curr && curr.id === oldId ? null : curr));
               }
             }
@@ -762,13 +803,14 @@ export default function HomensDeDeusView({
               if (!isMounted) return;
               if (payload.eventType === "INSERT") {
                 setComments(prev => {
-                  if (prev.some(c => c.id === payload.new.id)) return prev;
-                  return [...prev, payload.new];
+                  const listPrev = safeArray<any>(prev, "realtime_insert_comments");
+                  if (listPrev.some(c => c && c.id === payload.new.id)) return listPrev;
+                  return [...listPrev, payload.new];
                 });
               } else if (payload.eventType === "UPDATE") {
-                setComments(prev => prev.map(c => c.id === payload.new.id ? payload.new : c));
+                setComments(prev => safeArray<any>(prev, "realtime_update_comments").map(c => c && c.id === payload.new.id ? payload.new : c));
               } else if (payload.eventType === "DELETE") {
-                setComments(prev => prev.filter(c => c.id !== payload.old.id));
+                setComments(prev => safeArray<any>(prev, "realtime_delete_comments").filter(c => c && c.id !== payload.old.id));
               }
             }
           )
@@ -783,11 +825,12 @@ export default function HomensDeDeusView({
               if (!isMounted) return;
               if (payload.eventType === "INSERT" || payload.eventType === "UPDATE") {
                 setReactions(prev => {
-                  const filtered = prev.filter(r => r.id !== payload.new.id);
+                  const listPrev = safeArray<any>(prev, "realtime_reaction_upsert");
+                  const filtered = listPrev.filter(r => r && r.id !== payload.new.id);
                   return [...filtered, payload.new];
                 });
               } else if (payload.eventType === "DELETE") {
-                setReactions(prev => prev.filter(r => r.id !== payload.old.id));
+                setReactions(prev => safeArray<any>(prev, "realtime_reaction_delete").filter(r => r && r.id !== payload.old.id));
               }
             }
           );
@@ -839,7 +882,8 @@ export default function HomensDeDeusView({
       }
       try {
         const booklet = await dbGet<any[]>("anotacoes", "user_booklet") || [];
-        setIsInBooklet(booklet.some((bi: any) => bi.id === selectedMan.id));
+        const safeBooklet = safeArray<any>(booklet, "user_booklet_db");
+        setIsInBooklet(safeBooklet.some((bi: any) => bi && bi.id === selectedMan.id));
       } catch {
         setIsInBooklet(false);
       }
@@ -858,7 +902,8 @@ export default function HomensDeDeusView({
       }
       try {
         const favs = await dbGet<any[]>("favoritos", "favorites") || [];
-        setIsFavorited(favs.some((f: any) => f.id === selectedMan.id));
+        const safeFavs = safeArray<any>(favs, "user_favorites_db");
+        setIsFavorited(safeFavs.some((f: any) => f && f.id === selectedMan.id));
       } catch {
         setIsFavorited(false);
       }
@@ -873,9 +918,10 @@ export default function HomensDeDeusView({
     if (!selectedMan) return;
     try {
       const favs = await dbGet<any[]>("favoritos", "favorites") || [];
-      const index = favs.findIndex((f: any) => f.id === selectedMan.id);
+      const safeFavs = safeArray<any>(favs, "toggle_favorites_db");
+      const index = safeFavs.findIndex((f: any) => f && f.id === selectedMan.id);
       if (index > -1) {
-        favs.splice(index, 1);
+        safeFavs.splice(index, 1);
         setIsFavorited(false);
       } else {
         const favItem = {
@@ -888,10 +934,10 @@ export default function HomensDeDeusView({
              story: selectedMan.story
           }
         };
-        favs.push(favItem);
+        safeFavs.push(favItem);
         setIsFavorited(true);
       }
-      await dbPut("favoritos", "favorites", favs);
+      await dbPut("favoritos", "favorites", safeFavs);
       window.dispatchEvent(new CustomEvent("favorites-updated"));
     } catch (e) {
       console.error(e);
@@ -932,24 +978,36 @@ export default function HomensDeDeusView({
   const [fieldBibleVerse, setFieldBibleVerse] = useState("");
 
   // Available Era Filters
-  const uniqueEras = Array.from(new Set(items.map(item => item.era)));
+  // Wrapped inside try-catch to satisfy mobile/PWA fail-safe rendering boundaries
+  let uniqueEras: string[] = [];
+  let filtered: HomemDeDeus[] = [];
+  try {
+    const safeItemsList = safeArray<HomemDeDeus>(items, "unique_eras_items");
+    uniqueEras = Array.from(new Set(safeItemsList.map(item => item && item.era).filter(Boolean)));
 
-  // Filter and Search items
-  const filtered = items.filter(item => {
-    if (!isAdmin && hiddenIds.includes(item.id)) {
-      return false;
+    filtered = safeItemsList.filter(item => {
+      if (!item) return false;
+      const safeHiddenList = safeArray<string>(hiddenIds, "hidden_ids_filter");
+      if (!isAdmin && safeHiddenList.includes(item.id)) {
+        return false;
+      }
+
+      const term = (search || "").toLowerCase();
+      const matchesSearch = 
+        (item.name || "").toLowerCase().includes(term) || 
+        (item.story || "").toLowerCase().includes(term) || 
+        (item.mainLegacy || "").toLowerCase().includes(term);
+
+      const matchesEra = selectedEra === "todos" || item.era === selectedEra;
+
+      return matchesSearch && matchesEra;
+    });
+  } catch (err: any) {
+    console.error("[HomensDeDeus] Erro ao filtrar ou calcular eras:", err);
+    if (!renderError) {
+      setRenderError(err?.message || "Incompatibilidade no processamento de biografias");
     }
-
-    const term = search.toLowerCase();
-    const matchesSearch = 
-      item.name.toLowerCase().includes(term) || 
-      item.story.toLowerCase().includes(term) || 
-      item.mainLegacy.toLowerCase().includes(term);
-
-    const matchesEra = selectedEra === "todos" || item.era === selectedEra;
-
-    return matchesSearch && matchesEra;
-  });
+  }
 
   const handleAdminVerify = (e: React.FormEvent) => {
     e.preventDefault();
@@ -1125,6 +1183,51 @@ export default function HomensDeDeusView({
     if (!selectedMan) return;
     handleDeleteItem(selectedMan.id, e);
   };
+
+  if (renderError) {
+    return (
+      <div className="p-8 text-center bg-white dark:bg-slate-900 rounded-[2.5rem] border border-red-200 dark:border-rose-950/40 shadow-sm max-w-xl mx-auto my-12 space-y-6">
+        <div className="w-16 h-16 bg-red-100 dark:bg-rose-950/20 rounded-full flex items-center justify-center mx-auto text-red-500">
+          <ShieldAlert size={36} />
+        </div>
+        <div className="space-y-2">
+          <h3 className="text-xl font-black text-heading text-red-600 dark:text-rose-400">Falha ao Carregar Biografias</h3>
+          <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed font-semibold">
+            Ocorreu uma incompatibilidade temporária com os dados armazenados em cache no seu dispositivo móvel ou PWA.
+          </p>
+          <div className="p-3 bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-white/5 rounded-xl text-left">
+            <p className="text-[10px] font-mono text-slate-500 break-all leading-tight">
+              Erro: {renderError}
+            </p>
+          </div>
+        </div>
+        <div className="flex flex-col sm:flex-row gap-3 justify-center">
+          <button
+            onClick={() => {
+              try {
+                localStorage.removeItem("escola_mural_homens");
+                localStorage.removeItem("escola_mural_comments");
+                localStorage.removeItem("escola_mural_reactions");
+                localStorage.removeItem("escola_da_fe_hidden_men_ids");
+                location.reload();
+              } catch (e) {
+                console.error(e);
+              }
+            }}
+            className="px-5 py-3 bg-red-600 hover:bg-red-700 text-white font-bold text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer"
+          >
+            Limpar Cache & Recarregar
+          </button>
+          <button
+            onClick={() => setRenderError(null)}
+            className="px-5 py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-200 font-bold text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer"
+          >
+            Tentar Ignorar
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <motion.div 
