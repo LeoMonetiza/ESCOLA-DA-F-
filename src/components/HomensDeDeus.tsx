@@ -32,7 +32,6 @@ import {
 } from "lucide-react";
 import { cn } from "@/src/lib/utils";
 import { dbGet, dbPut } from "../lib/indexedDb";
-import { ThemeBanner } from "./SimulatedAds";
 import { getSupabaseClient, performResilientDbWrite } from "../lib/supabaseClient";
 
 function tryFormatDateTimeLocal(dateStr: string | undefined | null): string {
@@ -1253,9 +1252,6 @@ export default function HomensDeDeusView({
         </p>
       </div>
 
-      {/* Theme banner simulation */}
-      <ThemeBanner type="discreet" />
-
       {/* Control Actions (Search, Filters, Admin Entry) */}
       <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-6 p-6 md:p-8 bg-white dark:bg-card-dark rounded-[2.5rem] border border-slate-100 dark:border-border-dark shadow-sm">
         
@@ -1531,7 +1527,7 @@ export default function HomensDeDeusView({
           {filtered.map((item, index) => (
             <motion.div
               layout
-              key={item.id}
+              key={"man_" + (item.id || "no_id") + "_" + index}
               onClick={() => setSelectedMan(item)}
               className="group cursor-pointer bg-white dark:bg-card-dark border-2 border-transparent hover:border-[#cfaf72]/40 rounded-3xl p-3 sm:p-5 shadow-xl hover:-translate-y-2 transition-all flex flex-col items-center text-center md:flex-row md:items-stretch md:text-left gap-3 sm:gap-6 overflow-hidden"
               initial={{ opacity: 0, scale: 0.95 }}
@@ -1889,11 +1885,6 @@ export default function HomensDeDeusView({
                   </div>
                 )}
 
-                {/* Simulated inline banner */}
-                <div className="my-4">
-                  <ThemeBanner type="discreet" />
-                </div>
-
                 {/* Comentários e Reações de Fé */}
                 <div className="border-t border-slate-100 dark:border-border-dark pt-8 space-y-6">
                   {/* Feedback Toast Banner */}
@@ -1964,9 +1955,9 @@ export default function HomensDeDeusView({
                     {getBiographyComments(selectedMan.id).length === 0 ? (
                       <p className="text-xs text-center text-muted py-6 font-semibold">Nenhuma reflexão bíblica registrada ainda. Deixe sua palavra de edificação!</p>
                     ) : (
-                      getBiographyComments(selectedMan.id).map((com) => (
+                      getBiographyComments(selectedMan.id).map((com, cIdx) => (
                         <div 
-                          key={com.id} 
+                          key={"bio_com_" + (com.id || "no_id") + "_" + cIdx} 
                           className="bg-slate-50/50 dark:bg-slate-900/40 border border-slate-100 dark:border-white/5 p-4 rounded-2xl flex items-start gap-3"
                         >
                           <div className="w-8 h-8 rounded-xl bg-amber-500/10 flex items-center justify-center font-black shrink-0 text-[#cfaf72] text-xs uppercase text-left">

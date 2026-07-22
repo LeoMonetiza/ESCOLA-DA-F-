@@ -61,6 +61,8 @@ import FavoritesView from "./components/FavoritesView";
 import { getSupabaseClient, checkSupabaseConfigExists } from "./lib/supabaseClient";
 import { optimizeItemContent } from "./lib/contentOptimizer";
 import { dbGet, dbPut, safeStorageWrite, clearExpiredCache, recoverApplicationState, storageDiagnostics } from "./lib/indexedDb";
+import { syncService } from "./services/syncService";
+import { databaseService } from "./services/databaseService";
 import { 
   ThemeBanner, 
   NativeFeedAd, 
@@ -948,11 +950,6 @@ function StudyDetailModal({
                 <p className="italic text-muted">Este conteúdo está sendo expandido para atingir a profundidade de 30+ linhas conforme solicitado. Em breve teremos a versão completa aqui.</p>
               )}
             </div>
-          </div>
-
-          {/* Discreet inline banner inside content: ("Estudos → conteúdo → banner", "Histórias → banner discreto") */}
-          <div className="my-3 sm:my-4">
-            <ThemeBanner type="discreet" />
           </div>
 
 
@@ -2045,7 +2042,7 @@ function Home({
               
               if (bioData) {
                 return (
-                  <div key={a.id || `announcement-bio-${idx}`} className="relative p-6 bg-card-light dark:bg-card-dark rounded-2xl border border-border-light dark:border-border-dark flex flex-col justify-between shadow-xl group hover:border-[#cfaf72]/20 transition-all overflow-hidden">
+                  <div key={`announcement-bio-${a.id || 'no-id'}-${idx}`} className="relative p-6 bg-card-light dark:bg-card-dark rounded-2xl border border-border-light dark:border-border-dark flex flex-col justify-between shadow-xl group hover:border-[#cfaf72]/20 transition-all overflow-hidden">
                     <div>
                       <div className="flex items-center justify-between gap-4 mb-3">
                         <div className="flex items-center gap-2">
@@ -2134,7 +2131,7 @@ function Home({
               }
 
               return (
-                <div key={a.id || `announcement-${idx}`} className="relative p-6 bg-card-light dark:bg-card-dark rounded-2xl border border-border-light dark:border-border-dark flex flex-col justify-between shadow-xl group hover:border-[#cfaf72]/20 transition-all">
+                <div key={`announcement-item-${a.id || 'no-id'}-${idx}`} className="relative p-6 bg-card-light dark:bg-card-dark rounded-2xl border border-border-light dark:border-border-dark flex flex-col justify-between shadow-xl group hover:border-[#cfaf72]/20 transition-all">
                   <div>
                     <div className="flex items-center justify-between gap-4 mb-3">
                       <div className="flex items-center gap-2">
@@ -2810,8 +2807,6 @@ function Home({
       </section>
 
       {/* Sponsor Native Ad between feeds as requested: ("Início: 1 anúncio nativo no feed (entre conteúdos)") */}
-      <NativeFeedAd positionIndex={0} />
-
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-16">
         <div className="space-y-12">
           <h3 className="text-3xl font-black text-heading tracking-tight flex items-center gap-4">
@@ -2826,9 +2821,9 @@ function Home({
                 <Link to="/estudos" className="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl text-primary hover:bg-primary hover:text-white transition-all"><ChevronRight size={20} /></Link>
               </div>
               <div className="space-y-5">
-                {[...BIBLICAL_THEMES].sort((a, b) => a.title.localeCompare(b.title, 'pt-BR')).slice(0, 4).map((theme) => (
+                {[...BIBLICAL_THEMES].sort((a, b) => a.title.localeCompare(b.title, 'pt-BR')).slice(0, 4).map((theme, idx) => (
                   <div 
-                    key={theme.id} 
+                    key={`home-theme-${theme.id || 'no-id'}-${idx}`} 
                     onClick={() => onSelectItem(theme)}
                     className="flex items-center gap-3 sm:gap-5 p-3.5 sm:p-5 bg-slate-50 dark:bg-slate-800/40 rounded-2xl sm:rounded-[2rem] transition-all cursor-pointer group/item hover:bg-primary shadow-sm"
                   >
@@ -2847,7 +2842,7 @@ function Home({
               <div className="grid grid-cols-2 gap-4">
                 {[...BIBLICAL_NAMES].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR')).slice(0, 8).map((item, idx) => (
                   <button 
-                    key={`${item.name}-${idx}`} 
+                    key={`home-dict-${(item as any).id || item.name}-${idx}`} 
                     onClick={() => onSelectItem(item)}
                     className="bg-slate-50 dark:bg-slate-800/40 p-3 sm:p-5 rounded-xl sm:rounded-[1.5rem] text-xs sm:text-sm font-black text-center text-slate-600 dark:text-slate-300 break-words whitespace-normal hover:bg-secondary hover:text-white transition-all shadow-sm active:scale-95 border border-transparent hover:border-accent"
                   >
@@ -2866,8 +2861,8 @@ function Home({
           </h3>
           
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
-            {[...BIBLICAL_STORIES].filter(s => s.type === 'place').sort((a, b) => a.title.localeCompare(b.title, 'pt-BR')).slice(0, 4).map((story) => (
-              <div key={story.id} onClick={() => onSelectItem(story)} className="group cursor-pointer">
+            {[...BIBLICAL_STORIES].filter(s => s.type === 'place').sort((a, b) => a.title.localeCompare(b.title, 'pt-BR')).slice(0, 4).map((story, idx) => (
+              <div key={`home-place-${story.id || 'no-id'}-${idx}`} onClick={() => onSelectItem(story)} className="group cursor-pointer">
                 <div className="h-48 bg-slate-100 dark:bg-slate-800 rounded-[3rem] mb-6 overflow-hidden shadow-xl transition-all group-hover:shadow-2xl group-hover:-translate-y-2 relative">
                   <div className="absolute inset-0 bg-secondary flex items-center justify-center">
                     <MapPin size={48} className="text-accent/30 group-hover:scale-125 transition-transform" />
@@ -3316,12 +3311,11 @@ function Studies({
       </div>
 
       {/* Studies discreet ad banner as requested: ("Estudos → Banner discreto") */}
-      <ThemeBanner type="discreet" />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
         {filtered.map((theme, i) => (
           <motion.div 
-            key={`${theme.id || theme.title}-${i}`}
+            key={`study-theme-${theme.id || theme.title}-${i}`}
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: i * 0.01 }}
@@ -3638,12 +3632,11 @@ function Dictionary({
       </div>
 
       {/* Dictionary only simple ad banner as requested: ("Dicionário → Só banner pequeno") */}
-      <ThemeBanner type="small" />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {filtered.map((item, index) => (
           <div 
-            key={`${item.id || item.name}-${index}`} 
+            key={`dict-item-${item.id || item.name}-${index}`} 
             onClick={() => onSelectItem(item)}
             className="flex bg-card-light dark:bg-card-dark p-6 rounded-[2rem] border border-border-light dark:border-border-dark items-center gap-6 hover:shadow-2xl hover:border-accent hover:-translate-y-1 transition-all cursor-pointer group shadow-sm relative overflow-hidden"
           >
@@ -3929,7 +3922,6 @@ function Stories({
       )}
 
       {/* Stories discreet ad banner as requested: ("Histórias → Banner discreto") */}
-      <ThemeBanner type="discreet" />
 
       <div className="space-y-12">
         <section>
@@ -3942,7 +3934,7 @@ function Stories({
               .filter(s => s.type === 'character')
               .sort((a, b) => a.title.localeCompare(b.title, 'pt-BR'))
               .map((story, index) => (
-              <div key={`${story.id || story.title}-${index}`} onClick={() => onSelectItem(story)} className="card p-0 flex flex-col sm:flex-row overflow-hidden group cursor-pointer border-none shadow-xl hover:shadow-2xl hover:-translate-y-2 transition-all relative">
+              <div key={`char-story-${story.id || story.title}-${index}`} onClick={() => onSelectItem(story)} className="card p-0 flex flex-col sm:flex-row overflow-hidden group cursor-pointer border-none shadow-xl hover:shadow-2xl hover:-translate-y-2 transition-all relative">
                 <div className="w-full sm:w-40 bg-slate-50 dark:bg-slate-800 flex-shrink-0 flex items-center justify-center text-slate-400 group-hover:bg-primary group-hover:text-white transition-all py-8 sm:py-0">
                   <User size={40} className="group-hover:scale-110 transition-transform" />
                 </div>
@@ -4000,7 +3992,7 @@ function Stories({
               .filter(s => s.type === 'place')
               .sort((a, b) => a.title.localeCompare(b.title, 'pt-BR'))
               .map((story, index) => (
-              <div key={`${story.id || story.title}-${index}`} onClick={() => onSelectItem(story)} className="card p-0 flex flex-col sm:flex-row overflow-hidden group cursor-pointer border-none shadow-xl hover:shadow-2xl hover:-translate-y-2 transition-all relative">
+              <div key={`place-story-${story.id || story.title}-${index}`} onClick={() => onSelectItem(story)} className="card p-0 flex flex-col sm:flex-row overflow-hidden group cursor-pointer border-none shadow-xl hover:shadow-2xl hover:-translate-y-2 transition-all relative">
                 <div className="w-full sm:w-40 bg-indigo-50 dark:bg-indigo-950/20 flex-shrink-0 flex items-center justify-center text-indigo-300 group-hover:bg-indigo-600 group-hover:text-white transition-all py-8 sm:py-0">
                   <MapPin size={40} className="group-hover:scale-110 transition-transform" />
                 </div>
@@ -4256,12 +4248,11 @@ function Theology({
       )}
 
       {/* Theology small header banner as requested: ("Teologia e cursos → Banner pequeno") */}
-      <ThemeBanner type="small" />
 
       {/* Theology modules with native ad split in between as requested: ("Teologia e cursos → Anúncios nativos entre módulos") */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
         {[...theologyTopics].sort((a, b) => a.title.localeCompare(b.title, 'pt-BR')).map((topic, i) => (
-          <div key={`${topic.id || topic.title}-${i}`} onClick={() => onSelectItem(topic)} className="card group cursor-pointer border-2 border-transparent hover:border-accent flex flex-col p-5 sm:p-6 shadow-xl hover:-translate-y-2 transition-all relative">
+          <div key={`theology-topic-${topic.id || topic.title}-${i}`} onClick={() => onSelectItem(topic)} className="card group cursor-pointer border-2 border-transparent hover:border-accent flex flex-col p-5 sm:p-6 shadow-xl hover:-translate-y-2 transition-all relative">
             <div className="flex justify-between items-start mb-5">
               <span className="text-accent font-black text-[10px] bg-accent/10 px-3 py-1.5 rounded-xl tracking-widest uppercase">Módulo 0{i + 1}</span>
               <div className="flex items-center gap-2">
@@ -4551,7 +4542,6 @@ function Course({
       )}
 
       {/* Course small header banner as requested: ("Teologia e cursos → Banner pequeno") */}
-      <ThemeBanner type="small" />
 
       {/* Course modules with native ad injection in list view as requested: ("Teologia e cursos → Anúncios nativos entre módulos") */}
       <div className="max-w-5xl space-y-6">
@@ -4826,9 +4816,9 @@ function ApoiaMissao({
               <h4 className="text-xs font-black uppercase tracking-widest text-[#cfaf72] mb-1">Dados para apoio bancário:</h4>
               
               <div className="grid grid-cols-1 gap-4">
-                {fields.map((field) => (
+                {fields.map((field, fIdx) => (
                   <div 
-                    key={field.key}
+                    key={`donation-field-${field.key || 'key'}-${fIdx}`}
                     className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between p-5 bg-slate-50 dark:bg-slate-900/60 rounded-2xl border border-border-light dark:border-border-dark hover:border-[#cfaf72]/30 transition-all gap-4 group/row min-w-0"
                   >
                     <div className="flex items-start sm:items-center gap-4 min-w-0 flex-grow">
@@ -5487,20 +5477,30 @@ function AppContent({ isDark, theme, setTheme }: { isDark: boolean, theme: "ligh
 
     if (!dbPayload) return;
     try {
+      if (!navigator.onLine) {
+        console.log(`[Offline Push] Dispositivo offline. Enfileirando item de [${table}] no IndexedDB.`);
+        await syncService.queueOperation(table, "INSERT", dbPayload);
+        return;
+      }
+
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 4000);
       try {
-        await fetch(`/api/db/${table}/add`, {
+        const res = await fetch(`/api/db/${table}/add`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(dbPayload),
           signal: controller.signal
         });
+        if (!res.ok) {
+          throw new Error(`HTTP Error ${res.status}`);
+        }
       } finally {
         clearTimeout(timeoutId);
       }
     } catch (e) {
-      console.warn("Falha ao sincronizar item offline para o Supabase (executando offline):", e);
+      console.warn(`[Offline Fallback] Falha no push de [${table}]. Salvando na fila de sincronização:`, e);
+      await syncService.queueOperation(table, "INSERT", dbPayload);
     }
   };
 
@@ -6157,45 +6157,6 @@ function AppContent({ isDark, theme, setTheme }: { isDark: boolean, theme: "ligh
   const [showOccasionalCompletedAd, setShowOccasionalCompletedAd] = useState(false);
 
   const handleSelectItem = (item: any) => {
-    // Check if the opened content is an advanced theological study or course lesson ("Vídeo opcional antes de conteúdos mais longos")
-    const isTeologiaOrCourseItem = item.id && (
-      item.id === "bibliologia" || 
-      item.id === "teontologia" || 
-      item.id === "cristologia" || 
-      item.id === "pneumatologia" || 
-      item.id === "antropologia" || 
-      item.id === "soteriologia" || 
-      item.id === "escatologia" ||
-      item.lesson !== undefined
-    );
-
-    const isDictionary = location.pathname === "/dicionario";
-
-    if (isTeologiaOrCourseItem) {
-      setPendingRewardedItem(item);
-      setShowRewardedAd(true);
-      return;
-    }
-
-    if (isDictionary) {
-      // Direct open without counting or popup ads to keep dictionary search fast & pleasant
-      setSelectedItem(item);
-      return;
-    }
-
-    // Studies counting trigger ("Anúncio entre páginas apenas depois de abrir vários estudos, não a cada toque")
-    const isStudy = location.pathname === "/estudos" || item.id?.startsWith("estudo") || BIBLICAL_THEMES.some(t => t.id === item.id);
-    if (isStudy) {
-      const nextCount = studyClickCount + 1;
-      setStudyClickCount(nextCount);
-      // Trigger interstitial ad once every 3 study taps
-      if (nextCount > 0 && nextCount % 3 === 0) {
-        setPendingInterstitialItem(item);
-        setShowInterstitial(true);
-        return;
-      }
-    }
-
     setSelectedItem(item);
   };
 
@@ -6211,10 +6172,9 @@ function AppContent({ isDark, theme, setTheme }: { isDark: boolean, theme: "ligh
       return next;
     });
 
-    // Stories completed check: "Histórias → terminar história → anúncio ocasional"
     if (item.type === 'character' || item.type === 'place') {
       setSelectedItem(null); // Close active reading view
-      setShowOccasionalCompletedAd(true); // Trigger interstitial ad after completing story on close!
+      alert("✓ Registro de Leitura Confirmado no seu Painel Teológico de Histórias!");
     } else {
       alert("✓ Progresso teológico salvo e registrado!");
     }
@@ -6309,11 +6269,6 @@ function AppContent({ isDark, theme, setTheme }: { isDark: boolean, theme: "ligh
         </main>
       </div>
 
-      {/* FOOTER AD - SPECIFICALLY FOR '/' (Início) -> "Início: Banner pequeno no rodapé" */}
-      {location.pathname === "/" && (
-        <ThemeBanner type="footer" />
-      )}
-
       {/* Global Dynamic Footer containing custom socialLinks editable by Admin */}
       <footer className="bg-secondary/5 dark:bg-slate-900/40 border-t border-border-light dark:border-border-dark py-12 px-6 sm:px-8 lg:px-12 mt-12 text-center lg:text-left flex flex-col xl:flex-row items-center justify-between gap-6">
         <div>
@@ -6362,9 +6317,6 @@ function AppContent({ isDark, theme, setTheme }: { isDark: boolean, theme: "ligh
         </div>
       </footer>
 
-      {/* Floating telemetry widget for interactive monetizing testing */}
-      <AdMetricsPanel />
-
       {/* Study Detail Popup */}
       <AnimatePresence>
         {selectedItem && (
@@ -6373,51 +6325,6 @@ function AppContent({ isDark, theme, setTheme }: { isDark: boolean, theme: "ligh
             onClose={() => setSelectedItem(null)} 
             onComplete={handleCompleteItem}
             isCompleted={isItemCompleted(selectedItem)}
-          />
-        )}
-      </AnimatePresence>
-
-      {/* Interstitial Ad Popup after multiple studies opens */}
-      <AnimatePresence>
-        {showInterstitial && (
-          <InterstitialAdModal 
-            onClose={() => {
-              setShowInterstitial(false);
-              if (pendingInterstitialItem) {
-                setSelectedItem(pendingInterstitialItem);
-                setPendingInterstitialItem(null);
-              }
-            }}
-          />
-        )}
-      </AnimatePresence>
-
-      {/* Occasional ad popup when completing storytelling objects */}
-      <AnimatePresence>
-        {showOccasionalCompletedAd && (
-          <InterstitialAdModal 
-            onClose={() => {
-              setShowOccasionalCompletedAd(false);
-              alert("✓ Registro de Leitura Confirmado no seu Painel Teológico de Histórias!");
-            }}
-          />
-        )}
-      </AnimatePresence>
-
-      {/* Optional Rewarded Video Ad Modal simulator */}
-      <AnimatePresence>
-        {showRewardedAd && pendingRewardedItem && (
-          <RewardedVideoAdSimulator 
-            courseTitle={pendingRewardedItem.title || pendingRewardedItem.name || "Módulo Integrado"}
-            onAdCompleted={() => {
-              setShowRewardedAd(false);
-              setSelectedItem(pendingRewardedItem);
-              setPendingRewardedItem(null);
-            }}
-            onClose={() => {
-              setShowRewardedAd(false);
-              setPendingRewardedItem(null);
-            }}
           />
         )}
       </AnimatePresence>

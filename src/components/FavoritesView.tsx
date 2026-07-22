@@ -251,11 +251,11 @@ export default function FavoritesView({ onSelectItem }: FavoritesViewProps) {
               layout
               className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
             >
-              {filteredFavorites.map((fav) => {
+              {filteredFavorites.map((fav, fIdx) => {
                 const badge = getTypeBadge(fav.type);
                 return (
                   <motion.div
-                    key={fav.id}
+                    key={"fav_" + (fav.id || "no_id") + "_" + fIdx}
                     layout
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}

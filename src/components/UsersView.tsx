@@ -301,8 +301,8 @@ export default function UsersView({
                   </td>
                 </tr>
               ) : (
-                filteredDispositivos.map((dev) => (
-                  <tr key={dev.id} className="hover:bg-slate-50/50 dark:hover:bg-white/5 transition-colors">
+                filteredDispositivos.map((dev, dIdx) => (
+                  <tr key={"tbl_dev_" + (dev.id || "no_id") + "_" + dIdx} className="hover:bg-slate-50/50 dark:hover:bg-white/5 transition-colors">
                     <td className="py-5 px-6">
                       <div className="flex items-center gap-3">
                         <div className="w-9 h-9 bg-accent/15 text-accent rounded-xl flex items-center justify-center shrink-0 border border-accent/20">
@@ -383,9 +383,9 @@ export default function UsersView({
               Nenhum dispositivo encontrado.
             </div>
           ) : (
-            filteredDispositivos.map((dev) => (
+            filteredDispositivos.map((dev, dIdx) => (
               <div 
-                key={dev.id} 
+                key={"mob_dev_" + (dev.id || "no_id") + "_" + dIdx} 
                 className="bg-slate-50/50 dark:bg-white/2 p-4 rounded-2xl border border-border-light dark:border-border-dark space-y-3 relative"
               >
                 <div className="flex items-center gap-2.5">

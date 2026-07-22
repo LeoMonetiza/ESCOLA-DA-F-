@@ -1328,9 +1328,9 @@ export default function Community({
                         {adComments.length === 0 ? (
                           <p className="text-xs text-center text-muted py-4 font-semibold">Nenhum debate registrado ainda. Seja o primeiro a comentar!</p>
                         ) : (
-                          adComments.map((com) => (
+                          adComments.map((com, cIdx) => (
                             <div 
-                              key={com.id} 
+                              key={"ad_com_" + (com.id || "no_id") + "_" + cIdx} 
                               className="bg-white dark:bg-secondary border border-slate-100 dark:border-white/5 p-3 rounded-2xl flex items-start gap-3"
                             >
                               <div className="w-8 h-8 rounded-xl bg-slate-100 dark:bg-white/5 flex items-center justify-center font-black shrink-0 text-[#cfaf72] text-xs uppercase text-left">
@@ -1455,7 +1455,7 @@ export default function Community({
 
             return (
               <motion.article
-                key={post.id}
+                key={"post_" + (post.id || "no_id") + "_" + index}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 className="bg-white dark:bg-secondary border border-slate-100 dark:border-white/5 rounded-3xl overflow-hidden shadow-xl"
@@ -1675,9 +1675,9 @@ export default function Community({
                       {postComments.length === 0 ? (
                         <p className="text-xs text-center text-muted py-4 font-semibold">Nenhum debate registrado ainda. Seja o primeiro a comentar!</p>
                       ) : (
-                        postComments.map((com) => (
+                        postComments.map((com, cIdx) => (
                           <div 
-                            key={com.id} 
+                            key={"post_com_" + (com.id || "no_id") + "_" + cIdx} 
                             className="bg-white dark:bg-secondary border border-slate-100 dark:border-white/5 p-3 rounded-2xl flex items-start gap-3"
                           >
                             <div className="w-8 h-8 rounded-xl bg-slate-100 dark:bg-white/5 flex items-center justify-center font-black shrink-0 text-[#cfaf72] text-xs uppercase">

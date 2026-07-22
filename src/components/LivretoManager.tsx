@@ -585,7 +585,7 @@ export default function LivretoManager() {
                     {booklet.map((item, index) => (
                       <motion.div
                         layout
-                        key={item.id}
+                        key={"booklet_" + (item.id || "no_id") + "_" + index}
                         initial={{ opacity: 0, y: 15 }}
                         animate={{ opacity: 1, y: 0 }}
                         className="p-5 bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-border-dark rounded-2xl flex items-start justify-between gap-4"

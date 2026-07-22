@@ -144,7 +144,7 @@ export default function AttributesOfGodView() {
                 const isActive = activeId === attr.id;
                 return (
                   <motion.div
-                    key={attr.id}
+                    key={"attr_" + (attr.id || "no_id") + "_" + idx}
                     layout
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}

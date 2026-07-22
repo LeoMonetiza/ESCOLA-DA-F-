@@ -633,12 +633,12 @@ export default function SupportView({ isAdmin, triggerConfirm }: SupportViewProp
                     <p className="text-xs font-bold font-mono">Nenhuma mensagem enviada por utilizadores ainda.</p>
                   </div>
                 ) : (
-                  sessions.map(sess => {
+                  sessions.map((sess, sIdx) => {
                     const isActive = sess.dispositivo_id === selectedSessionId;
                     const formattedTime = tryFormatTime(sess.lastMsg.criado_em);
                     return (
                       <button
-                        key={sess.dispositivo_id}
+                        key={"sess_" + (sess.dispositivo_id || "no_id") + "_" + sIdx}
                         onClick={() => setSelectedSessionId(sess.dispositivo_id)}
                         className={`w-full text-left p-4 rounded-2xl flex items-start gap-4 transition-all duration-300 border cursor-pointer group active:scale-98 ${
                           isActive 
@@ -756,14 +756,14 @@ export default function SupportView({ isAdmin, triggerConfirm }: SupportViewProp
                   </p>
                 </div>
               ) : (
-                activeThreadMessages.map(msg => {
+                activeThreadMessages.map((msg, mIdx) => {
                   const isMine = (msg.enviado_por_admin && isAdmin) || (!msg.enviado_por_admin && !isAdmin);
                   const formattedTime = tryFormatTime(msg.criado_em);
                   const isImage = msg.midia_tipo === "image" || (msg.midia_url && msg.midia_url.startsWith("data:image/"));
 
                   return (
                     <div 
-                      key={msg.id}
+                      key={"msg_thread_" + (msg.id || "no_id") + "_" + mIdx}
                       className={`flex flex-col relative z-10 ${isMine ? "items-end" : "items-start"}`}
                     >
                       <div className="flex items-center gap-2 mb-0.5 px-1.5">
@@ -1114,14 +1114,14 @@ export default function SupportView({ isAdmin, triggerConfirm }: SupportViewProp
                       </td>
                     </tr>
                   ) : (
-                    tableFilteredMessages.map((msg) => {
+                    tableFilteredMessages.map((msg, mIdx) => {
                       const formattedDate = tryFormatDateTime(msg.criado_em);
 
                       const isImage = msg.midia_tipo === "image" || (msg.midia_url && msg.midia_url.startsWith("data:image/"));
 
                       return (
                         <tr 
-                          key={msg.id}
+                          key={"tbl_msg_" + (msg.id || "no_id") + "_" + mIdx}
                           className="hover:bg-slate-50/50 dark:hover:bg-white/5 transition-all text-xs"
                         >
                           {/* Sender User & Device info info */}
@@ -1286,12 +1286,12 @@ export default function SupportView({ isAdmin, triggerConfirm }: SupportViewProp
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-white/5">
-                    {dispositivos.map((dev) => {
+                    {dispositivos.map((dev, devIdx) => {
                       const installTime = tryFormatDateTime(dev.installed_at || dev.criado_em);
                       const activeTime = tryFormatDateTime(dev.last_active_at);
 
                       return (
-                        <tr key={dev.id} className="hover:bg-slate-50/50 dark:hover:bg-white/5 transition-all text-xs">
+                        <tr key={"sup_dev_" + (dev.id || "no_id") + "_" + devIdx} className="hover:bg-slate-50/50 dark:hover:bg-white/5 transition-all text-xs">
                           <td className="p-4">
                             <div className="flex items-center gap-2.5">
                               <div className="w-8 h-8 rounded-lg bg-amber-500/10 text-[#cfaf72] flex items-center justify-center shrink-0">

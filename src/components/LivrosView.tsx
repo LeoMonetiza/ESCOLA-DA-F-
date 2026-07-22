@@ -362,7 +362,7 @@ export default function LivrosView({
 
             return (
               <motion.div
-                key={item.id}
+                key={"book_" + (item.id || "no_id") + "_" + index}
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3, delay: Math.min(index * 0.05, 0.4) }}

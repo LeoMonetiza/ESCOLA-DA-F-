@@ -88,7 +88,7 @@ export default function AITeacher() {
                 </div>
               )}
               {messages.map((m, i) => (
-                <div key={i} className={cn(
+                <div key={`ai-msg-${i}`} className={cn(
                   "max-w-[85%] p-3.5 rounded-2xl text-xs leading-relaxed shadow-sm",
                   m.role === "user" 
                     ? "ml-auto bg-primary text-white rounded-tr-none" 
