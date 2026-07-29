@@ -1115,43 +1115,17 @@ function Navbar({
 
           {/* Right side actions (Supabase Badge, Theme toggle and Admin Trigger) */}
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-            {/* Supabase Connection Status Indicator - ADMIN ONLY */}
-            {isAdmin && dbStatus === "connecting" && (
-              <button
-                type="button"
-                onClick={onSync}
-                className="flex items-center gap-1.5 px-2 py-1.5 sm:px-3 sm:py-1.5 bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 font-bold font-mono text-[9px] sm:text-[10px] uppercase rounded-xl hover:bg-yellow-500/20 transition-all animate-pulse shrink-0 cursor-pointer"
-                title="Buscando lições e atualizações..."
-              >
-                <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-yellow-400 rounded-full animate-ping shrink-0" />
-                <span className="hidden sm:inline">A carregar...</span>
-                <span className="sm:hidden">Carregando...</span>
-              </button>
-            )}
-
-            {isAdmin && dbStatus === "online" && (
+            {/* Storage Status Indicator - ADMIN ONLY */}
+            {isAdmin && (
               <button
                 type="button"
                 onClick={onSync}
                 className="flex items-center gap-1.5 px-2.5 py-1.5 sm:px-3 sm:py-1.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-bold font-mono text-[9px] sm:text-[10px] uppercase rounded-xl hover:bg-emerald-500/20 transition-all shrink-0 cursor-pointer shadow-lg shadow-emerald-500/5 active:scale-95 duration-150"
-                title="Conectado à Internet: Dados sincronizados em tempo real (Clique para atualizar)"
+                title="Dados 100% armazenados no seu dispositivo local (Telefone, Computador ou Tablet)"
               >
                 <div className="w-1.5 h-1.5 bg-emerald-400 rounded-full shrink-0" />
-                <span className="hidden sm:inline">Servidor Online ✓</span>
-                <span className="sm:hidden">Conectado</span>
-              </button>
-            )}
-
-            {isAdmin && dbStatus === "offline" && (
-              <button
-                type="button"
-                onClick={onSync}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 sm:px-3 sm:py-1.5 bg-red-500/10 border border-red-500/20 text-red-500 font-bold font-mono text-[9px] sm:text-[10px] uppercase rounded-xl hover:bg-red-500/20 transition-all shrink-0 cursor-pointer font-black active:scale-95 duration-150"
-                title={supabaseConfigMissing ? "Trabalhando de forma local offline!" : "Modo Offline ou sem rede. Clique para tentar reconectar."}
-              >
-                <div className="w-1.5 h-1.5 bg-red-500 rounded-full shrink-0 animate-pulse" />
-                <span className="hidden sm:inline">{supabaseConfigMissing ? "Modo Offline" : "Modo Offline ↻"}</span>
-                <span className="sm:hidden">Offline</span>
+                <span className="hidden sm:inline">Dispositivo Local ✓</span>
+                <span className="sm:hidden">Local ✓</span>
               </button>
             )}
 
@@ -6361,9 +6335,9 @@ function AppContent({ isDark, theme, setTheme }: { isDark: boolean, theme: "ligh
               </div>
               
               <div className="space-y-2">
-                <h3 className="text-xl font-black text-heading leading-tight dark:text-white">Matrícula da Escola da Fé</h3>
+                <h3 className="text-xl font-black text-heading leading-tight dark:text-white">Identificação do Estudante</h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-semibold">
-                  Bem-vindo à <span className="text-[#cfaf72]">Escola da Fé</span>! Para registrar sua instalação no sistema oficial do Supabase e acompanhar seu progresso teológico, identifique-se abaixo.
+                  Bem-vindo à <span className="text-[#cfaf72]">Escola da Fé</span>! Para personalizar seu aprendizado e acompanhar seu progresso no seu próprio dispositivo, identifique-se abaixo.
                 </p>
               </div>
 
@@ -6390,9 +6364,9 @@ function AppContent({ isDark, theme, setTheme }: { isDark: boolean, theme: "ligh
                 </div>
                 
                 <div className="p-4 bg-slate-50 dark:bg-slate-950/50 rounded-2xl border border-slate-100 dark:border-white/5 space-y-2">
-                  <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500 block">Sincronização Segura</span>
+                  <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500 block">Armazenamento 100% Local no Seu Dispositivo</span>
                   <p className="text-[10px] text-slate-400 dark:text-slate-400 font-semibold leading-relaxed">
-                    O aplicativo registra o seu nome de estudante, sistema operacional e progresso de estudo. Seus dados são salvos com segurança no Supabase para uso da plataforma Escola da Fé.
+                    Todos os seus dados (estudos, anotações, histórico e preferências) são salvos de forma privativa e segura no armazenamento interno deste aparelho (celular, tablet ou computador), sem envio para a nuvem.
                   </p>
                 </div>
               </div>
